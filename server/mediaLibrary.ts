@@ -160,6 +160,31 @@ export function registerMediaRoutes(app:Express):void{
    res.json(out);
   }catch(e){fail(res,e,422);}
  });
+ app.post('/api/media/:id/prepare-preview',async(req,res)=>{
+  const id=req.params.id;const m=await sourceOr404(id,res);if(!m)return;
+  if(m.state!=='ready'){res.status(409).json({error:'Эх видео бүрэн импортлогдоогүй.'});return;}
+  const input=original(m.id),preview=path.join(sourceDir(id),'browser-preview.mp4');
+  try{
+   const out=await serial(id,async()=>{
+    try{if((await fsp.stat(preview)).size>0)return {ready:true,url:'/api/media/'+id+'/preview'};}catch{/* not generated */}
+    const temp=preview+'.partial.mp4';
+    await fsp.rm(temp,{force:true});
+    const r=await ffRun(['-hide_banner','-nostdin','-y','-loglevel','error','-i',input,
+      '-map','0:v:0','-map','0:a:0?','-c:v','copy','-c:a','aac','-b:a','128k',
+      '-movflags','+faststart','-f','mp4',temp],'ffmpeg',24000);
+    if(r.code!==0)throw Error('MP4 preview remux алдаа: '+r.stderr.slice(-300));
+    await fsp.rename(temp,preview);
+    return {ready:true,url:'/api/media/'+id+'/preview'};
+   });
+   res.json(out);
+  }catch(e){fail(res,e);}
+ });
+ app.get('/api/media/:id/preview',async(req,res)=>{
+  if(!validId(req.params.id)){res.status(404).end();return;}
+  const m=await load(req.params.id);if(!m||m.state!=='ready'){res.status(404).end();return;}
+  const preview=path.join(sourceDir(m.id),'browser-preview.mp4');
+  try{await fsp.access(preview);res.type('mp4');res.sendFile(preview);}catch{res.status(404).end();}
+ });
  app.get('/api/media/:id/peaks',async(req,res)=>{
   const m=await sourceOr404(req.params.id,res);if(!m)return;
   if(m.state!=='ready'||!m.duration){res.status(409).json({error:'Видео бүрэн импортлогдоогүй.'});return;}
