@@ -1,0 +1,32 @@
+/** The default user-facing language. Czech source text must never be translated in place. */
+export const mn = {
+  appName: 'BYBE Studio',
+  appSubtitle: 'Чех 800 · Видео, аудио боловсруулах төв',
+  project: 'Төсөл', dashboard: 'Хяналтын самбар', media: 'Эх видео', clips: 'Аудионы зааг', qa: 'Чанарын шалгалт',
+  export: 'Экспорт', liveVoice: 'Шууд дуут яриа', future: 'Ирээдүйн боломж', settings: 'Тохиргоо',
+  chooseVideo: 'Эх видео сонгох', videoNote: 'Видео зөвхөн таны төхөөрөмж дээр нээгдэнэ. Тодорхой зөвшөөрөлгүйгээр сервер рүү бүтнээр нь илгээхгүй.',
+  noVideo: 'Одоогоор видео сонгоогүй байна.', fileName: 'Файлын нэр', fileDuration: 'Үргэлжлэх хугацаа',
+  currentTime: 'Одоогийн хугацаа', captureFrame: 'Энэ кадрын бичвэрийг AI-аар таних',
+  analyzeWarning: 'AI-аар таньсан текстийг эх дүрстэй тулгаж баталгаажуулна.',
+  detectedWord: 'Чех үг', detectedSentence: 'Чех өгүүлбэр', englishWord: 'Англи үг', englishSentence: 'Англи өгүүлбэр',
+  wordNo: 'Үгийн дугаар', part: 'Эх видеоны хэсэг', clipKind: 'Аудионы төрөл',
+  wordNormal: 'Үг — энгийн', wordSlow: 'Үг — удаан', sentenceNormal: 'Өгүүлбэр — энгийн', sentenceSlow: 'Өгүүлбэр — удаан',
+  start: 'Эхлэх хугацаа (сек)', end: 'Дуусах хугацаа (сек)', playSelection: 'Сонгосон хэсгийг сонсох',
+  saveCandidate: 'Заагийн санал хадгалах', addCandidate: 'Шинэ зааг оруулах', noCandidates: 'Аудионы зааг бүртгэгдээгүй байна.',
+  selectedClip: 'Сонгосон аудио', needsReview: 'Шалгах шаардлагатай', manuallyVerified: 'Хэрэглэгч баталгаажуулсан',
+  startHeard: 'Эхний авиа бүтэн', endHeard: 'Сүүлийн авиа бүтэн', wholeHeard: 'Бүтэн дуудлага зөв',
+  languageCorrect: 'Зөвхөн Чех яриа', textCorrect: 'Аудио ба Чех текст тохирсон', roleCorrect: 'Энгийн/удаан төрөл зөв',
+  verify: '6 шалгалтаар баталгаажуулах', resetWarning: 'Зааг эсвэл бичвэрийг өөрчилбөл өмнөх QA баталгаа хүчингүй болно.',
+  exportJson: 'Төслийн JSON татах', importJson: 'Төслийн JSON оруулах',
+  exportNote: 'JSON нь зөвхөн бүртгэл, хугацаа, QA-г хадгална. Видео эсвэл WAV аудиог агуулдаггүй.',
+  batchNote: 'Бүх видеог автоматаар задлах, WAV руу экспортлох нь дараагийн хөгжүүлэлтийн үе шат.',
+  liveVoiceNote: 'Live Voice-ийн серверийн модуль хадгалагдсан. Энэ хувилбарт үндсэн ажлын урсгалд идэвхгүй.',
+  ocrNoKey: 'Gemini API түлхүүр тохируулаагүй.', ocrError: 'Кадрын текст таних үед алдаа гарлаа.',
+  save: 'Хадгалах', cancel: 'Болих', ready: 'Бэлэн', progress: 'Боловсруулж байна…', error: 'Алдаа',
+  pending: 'Баталгаажаагүй', clipsCount: 'Нийт аудионы зааг', verifiedCount: 'Баталгаажсан',
+  pendingCount: 'Шалгах шаардлагатай', sourceNotSaved: 'Эх видео дахин нээхэд автоматаар сэргээгдэхгүй.',
+  importError: 'Төслийн JSON бүтэц буруу байна.', validRange: 'Эхлэх/дуусах хугацааг зөв оруулна уу.',
+  pickClip: 'Жагсаалтаас аудио сонгоно уу.', safetyNotice: 'Бодит WAV таслах, ASR-аар хэл батлах, автомат зааг илрүүлэх хараахан хийгдээгүй.',
+} as const;
+export type UIKey = keyof typeof mn;
+export const t = (key: UIKey): string => mn[key];
