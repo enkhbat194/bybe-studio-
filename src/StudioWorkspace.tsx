@@ -42,8 +42,13 @@ function isSegment(o:unknown):o is Segment {
  &&['REVIEW_REQUIRED','MANUALLY_VERIFIED'].includes(String(v.qa));
 }
 function nearestFrame(frames:FrameResult[],current:number):FrameResult|null {
- const best=frames.reduce<FrameResult|null>((prev,f)=>!prev||Math.abs(f.frameSec-current)<Math.abs(prev.frameSec-current)?f:prev,null);
- return best&&Math.abs(best.frameSec-current)<=1.5?best:null;
+ // A batch OCR frame may represent the same slide for several seconds.
+ const prior=frames.filter(f=>f.frameSec<=current).reduce<FrameResult|null>((prev,f)=>
+  !prev||f.frameSec>prev.frameSec?f:prev,null);
+ if(prior&&current-prior.frameSec<=8)return prior;
+ const upcoming=frames.filter(f=>f.frameSec>current).reduce<FrameResult|null>((prev,f)=>
+  !prev||f.frameSec<prev.frameSec?f:prev,null);
+ return upcoming&&upcoming.frameSec-current<=2?upcoming:null;
 }
 
 export default function StudioWorkspace(){
@@ -98,7 +103,7 @@ export default function StudioWorkspace(){
   }}
   return list.sort((a,b)=>a.frameSec-b.frameSec);
  },[frames,styleRules]);
- const unlinked=collected.filter(b=>!segments.some(s=>s.ocrId===b.id||s.text===b.text&&Math.abs((s.frameSec??-100)-b.frameSec)<10));
+ const unlinked=collected.filter(b=>b.frameSec>=part.coreStart&&b.frameSec<part.coreEnd&&!segments.some(s=>s.ocrId===b.id||s.text===b.text&&Math.abs((s.frameSec??-100)-b.frameSec)<10));
 
  useEffect(()=>{fetch('/api/health').then(r=>r.json()).then(v=>setOcrMode(v.ocrEngine==='gemini-opt-in'?'Gemini OCR (сонголт)':'Локал OCR · үнэгүй')).catch(()=>{});},[]);
  useEffect(()=>{return ()=>{if(src)URL.revokeObjectURL(src);};},[src]);
