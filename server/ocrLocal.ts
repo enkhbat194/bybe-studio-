@@ -61,8 +61,8 @@ export function blocksFromTsv(tsv: string, width: number, height: number, frameS
     if(!text || text.length>400 || confidence<53)continue;
     // Screenshot layout: Czech lesson overlays, not arbitrary presenter-face shapes.
     // CzechClass watermark, circle counter and noisy microscopic artifacts are not content.
-    if(/(?:CzechClass101|https?:|www\\.|^\\d+[.\\d]*$)/i.test(text))continue;
-    const letters=(text.match(/[\\p{L}]/gu)||[]).length;
+    if(/(?:CzechClass101|https?:|www\.|^\d+[.\d]*$)/i.test(text))continue;
+    const letters=(text.match(/[\p{L}]/gu)||[]).length;
     if(letters<2||letters/Math.max(1,text.length)<.46)continue;
     const relativeHeight=bottom-y;
     const topLeft=x<.50&&y<.47&&relativeHeight>=.022;
