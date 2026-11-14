@@ -168,7 +168,7 @@ export default function App() {
     </aside>
     <div className="main">
       <header className="topbar">
-        <div><span className="eyebrow">CZECH 800 / WORKSPACE</span><h1>{tabs.find(x=>x.id===tab)?.label}</h1></div>
+        <div><span className="eyebrow">ЧЕХ 800 / АЖЛЫН ОРЧИН</span><h1>{tabs.find(x=>x.id===tab)?.label}</h1></div>
         <div className="top-actions"><span className={'health '+(health==='ready'?'ok':'')}>{health==='ready'?'Gemini API: бэлэн':'Gemini API: түлхүүр шалгах'}</span><span className="locale">MN · Монгол</span></div>
       </header>
       {message&&<div className="notice" role="status">{message}<button onClick={()=>setMessage('')}>×</button></div>}
@@ -190,7 +190,7 @@ export default function App() {
             onChange={e=>changeFile(e.target.files?.[0])}/></div>
         {videoUrl?<video ref={videoRef} src={videoUrl} controls playsInline preload="metadata"
           onLoadedMetadata={e=>{const v=e.currentTarget;setDuration(Number.isFinite(v.duration)?v.duration:undefined);}}
-          onTimeUpdate={onTick} onEnded={()=>{playbackEnd.current=null;}}/>:<div className="empty-video"><FileVideo2 size={38}/>{t.noVideo}</div>}
+          onTimeUpdate={onTick} onEnded={()=>{playbackEnd.current=null;}} onError={()=>setMessage("Хөтөч энэ файлын видео/аудио кодекийг уншиж чадсангүй. MKV файлыг FFmpeg ашиглан хөрвүүлэх шаардлагатай байж болно.")}/>:<div className="empty-video"><FileVideo2 size={38}/>{t.noVideo}</div>}
         <div className="media-info"><span>{t.currentTime}: {fmt(currentTime)}</span><span>{t.fileDuration}: {fmt(duration ?? NaN)}</span></div>
       </div>}
       {tab==='media'&&<div className="two-col">
