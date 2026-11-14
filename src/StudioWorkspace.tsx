@@ -77,6 +77,15 @@ export default function StudioWorkspace(){
  const frame=nearestFrame(frames,current);
  const visibleBlocks=frame?.blocks.filter(b=>effectiveRole(b,styleRules)!=='ignore')??[];
  const reviewCount=segments.filter(s=>s.qa==='REVIEW_REQUIRED').length;
+ const collected=useMemo(()=>{
+  const list:OcrBlock[]=[];
+  for(const snap of frames){for(const block of snap.blocks){
+    if(effectiveRole(block,styleRules)==='ignore')continue;
+    if(!list.some(old=>sameScreenText(old,block)))list.push(block);
+  }}
+  return list.sort((a,b)=>a.frameSec-b.frameSec);
+ },[frames,styleRules]);
+ const unlinked=collected.filter(b=>!segments.some(s=>s.ocrId===b.id||s.text===b.text&&Math.abs((s.frameSec??-100)-b.frameSec)<10));
 
  useEffect(()=>{fetch('/api/health').then(r=>r.json()).then(v=>setHasApiKey(!!v.hasApiKey)).catch(()=>{});},[]);
  useEffect(()=>{return ()=>{if(src)URL.revokeObjectURL(src);};},[src]);
@@ -232,10 +241,11 @@ export default function StudioWorkspace(){
  async function importJson(f?:File){
   if(!f)return;
   try{
+   if(!file)throw new Error('Эх видеог эхлээд нээнэ үү.');
    const data=JSON.parse(await f.text());
    if(!Array.isArray(data.segments)||!data.segments.every(isSegment))throw new Error('Хадгалсан сегментийн бүтэц буруу.');
    // Imported data is scoped to a source; never silently assign to the wrong media.
-   if(file&&data.source?.name!==file.name)throw new Error('Өөр видеоны бүртгэл байна. Тохирох эх видеог нээнэ үү.');
+   if(data.source?.name!==file.name||data.source?.size!==file.size)throw new Error('Өөр видеоны бүртгэл байна. Тохирох эх видеог нээнэ үү.');
    setSegments(data.segments.map((s:Segment)=>({...s,sourceKey:sourceKey||s.sourceKey})));
    setFrames(Array.isArray(data.frames)?data.frames:[]);
    setStyleRules(Array.isArray(data.styleRules)?data.styleRules:[]);
@@ -263,7 +273,7 @@ export default function StudioWorkspace(){
   {status&&<div className="bybe-message" role="status">{status}<button aria-label="Мессеж хаах" onClick={()=>setStatus('')}><X size={15}/></button></div>}
   <main className="bybe-core">
    <section className="bybe-transcript panel">
-    <header><h2>Текст · аудионы жагсаалт</h2><span>{rows.length} мөр · QA {reviewCount}</span></header>
+    <header><h2>Текст · аудионы жагсаалт</h2><span>{rows.length} аудио · {unlinked.length} OCR · QA {reviewCount}</span></header>
     <div className="bybe-rows" ref={listRef} onWheel={()=>{manualList.current=true;window.setTimeout(()=>manualList.current=false,3000);}}>
      {rows.length===0?<div className="bybe-empty">Энэ хэсэгт аудионы мөр алга. Доод хугацааны шугамаас хэсэг сонгоод, <b>T</b> дарж видеоны текст дээр товшино.</div>:
       rows.map(s=><div key={s.id} ref={r=>{rowRefs.current[s.id]=r;}} className={'bybe-row '+(activeId===s.id?'is-current ':'')+(selectedId===s.id?'is-selected':'')}>
@@ -276,6 +286,13 @@ export default function StudioWorkspace(){
         <button title="Засах" aria-label={s.text+' засах'} onClick={()=>beginEdit(s)}><Edit3 size={15}/></button>
        </div>
       </div>)}
+     {unlinked.map(b=><div key={b.id} className="bybe-ocr-row">
+      <button className="bybe-row-text" onClick={()=>{const v=video.current;if(v){v.pause();v.currentTime=b.frameSec;}toPartAt(b.frameSec);}} title="Энэ бичвэр гарсан кадрт очих">
+       <span>{b.text}</span><small>OCR · {roleLabel(effectiveRole(b,styleRules))} · {time(b.frameSec)}</small>
+      </button>
+      <button title="Хэсэг сонгосны дараа энэ бичвэртэй холбох" onClick={()=>assignBlock(b)}>{selectedRange?'＋':'⧉'}</button>
+      <button title="Хэв маягийг ангилах" onClick={()=>{setStyleTarget(b);setStyleRole(effectiveRole(b,styleRules));}}><Settings2 size={14}/></button>
+     </div>)}
     </div>
    </section>
    <section className="bybe-preview panel">
