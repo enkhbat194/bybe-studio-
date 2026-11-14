@@ -7,8 +7,15 @@ import { useBackgroundScan } from './useBackgroundScan';
 import './StudioWorkspace.css';
 
 type ClipKind='word_normal'|'word_slow'|'sentence_normal'|'sentence_slow'|'english_word'|'english_sentence'|'unknown';
+const qaItems={
+ start_heard:'Эхний авиа бүтэн',end_heard:'Сүүлийн авиа бүтэн',whole_heard:'Бүтэн дуудлага зөв',
+ language_correct:'Зөв хэлээр ярьсан',text_correct:'Аудио ба бичвэр таарсан',role_correct:'Аудионы төрөл зөв',
+} as const;
+type QAKey=keyof typeof qaItems;
+const emptyQa=():Record<QAKey,boolean>=>Object.fromEntries(Object.keys(qaItems).map(k=>[k,false])) as Record<QAKey,boolean>;
 interface Segment {
  id:string;sourceKey:string;text:string;kind:ClipKind;start:number;end:number;
+ revisionId?:string;checks?:Record<QAKey,boolean>;
  frameSec:number|null;ocrId:string|null;styleSignature:string|null;
  qa:'REVIEW_REQUIRED'|'MANUALLY_VERIFIED';updatedAt:string;
 }
@@ -50,6 +57,7 @@ export default function StudioWorkspace(){
  const [selectedRange,setSelectedRange]=useState<{start:number;end:number}|null>(null);
  const [selectedId,setSelectedId]=useState<string|null>(null);
  const [editId,setEditId]=useState<string|null>(null);
+ const [qaChecks,setQaChecks]=useState<Record<QAKey,boolean>>(emptyQa);
  const [editDraft,setEditDraft]=useState<{text:string;start:string;end:string;kind:ClipKind}>({text:'',start:'0',end:'1',kind:'unknown'});
  const [textMode,setTextMode]=useState(false);
  const [status,setStatus]=useState('');
@@ -154,8 +162,43 @@ export default function StudioWorkspace(){
   setSelectedId(s.id);setLoop(repeat?s.id:null);seekEnd.current=s.end;
   v.currentTime=s.start;toPartAt(s.start);void v.play().catch(()=>setStatus('Видео тоглуулах формат дэмжигдэхгүй байна.'));
  }
+ async function exportClip(s:Segment){
+  const revision=await media.exportWav(s);
+  if(!revision)return;
+  setSegments(old=>old.map(c=>c.id===s.id?{...c,revisionId:revision.id,checks:emptyQa(),
+   qa:'REVIEW_REQUIRED' as const}:c));
+  setStatus('Жинхэнэ WAV хадгаллаа. Хүний QA шалгалт шаардлагатай.');
+ }
+ async function verifyEditing(){
+  if(!editing||!media.sourceId||!editing.revisionId)return;
+  if(!Object.keys(qaItems).every(k=>qaChecks[k as QAKey])){setStatus('6 QA шалгалт бүгдийг батална уу.');return;}
+  try{
+   const response=await fetch('/api/media/'+media.sourceId+'/revisions/'+editing.revisionId+'/verify',{
+    method:'POST',headers:{'X-BYBE-Request':'1','Content-Type':'application/json'},
+    body:JSON.stringify({clipId:editing.id,text:editing.text,start:editing.start,end:editing.end,kind:editing.kind,checks:qaChecks})
+   });
+   const result=await response.json();
+   if(!response.ok)throw Error(result.error||'QA батлахад алдаа.');
+   setSegments(old=>old.map(c=>c.id===editing.id?{...c,checks:{...qaChecks},
+    qa:'MANUALLY_VERIFIED' as const}:c));
+   setEditId(null);setStatus('Бодит WAV хэшийг шалгаж, хүний 6 QA баталгааг хадгаллаа.');
+  }catch(e){setStatus(e instanceof Error?e.message:'QA баталгаажуулалтын алдаа');}
+ }
+ async function downloadAppReady(){
+  if(!media.sourceId){setStatus('Эх видеог локал хөдөлгүүрт холбоно уу.');return;}
+  try{
+   const response=await fetch('/api/media/'+media.sourceId+'/app-ready');
+   const data=await response.json();
+   if(!response.ok)throw Error(data.error||'Экспортын алдаа');
+   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'});
+   const url=URL.createObjectURL(blob),a=document.createElement('a');
+   a.href=url;a.download='BYBE_APP_READY.json';a.click();
+   window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+   setStatus((data.clips?.length||0)+' QA баталгаажсан WAV-ийн manifest экспортлов. Аудио файлуудыг тусад нь татна.');
+  }catch(e){setStatus(e instanceof Error?e.message:'Экспортын алдаа');}
+ }
  function beginEdit(s:Segment){
-  setSelectedId(s.id);setEditId(s.id);setEditDraft({text:s.text,start:String(s.start),end:String(s.end),kind:s.kind});
+  setSelectedId(s.id);setEditId(s.id);setEditDraft({text:s.text,start:String(s.start),end:String(s.end),kind:s.kind});setQaChecks(s.checks||emptyQa());
   setLoop(null);
  }
  function saveEdit(){
@@ -164,7 +207,7 @@ export default function StudioWorkspace(){
   if(!editDraft.text.trim()||!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||(duration>0&&end>duration)){
    setStatus('Бичвэр эсвэл эхлэл/төгсгөлийн хугацаа буруу байна.');return;
   }
-  setSegments(old=>old.map(s=>s.id===editId?{...s,text:editDraft.text.trim(),start:n3(start),end:n3(end),kind:editDraft.kind,qa:'REVIEW_REQUIRED' as const,updatedAt:new Date().toISOString()}:s).sort((a,b)=>a.start-b.start));
+  setSegments(old=>old.map(s=>s.id===editId?{...s,text:editDraft.text.trim(),start:n3(start),end:n3(end),kind:editDraft.kind,revisionId:undefined,checks:emptyQa(),qa:'REVIEW_REQUIRED' as const,updatedAt:new Date().toISOString()}:s).sort((a,b)=>a.start-b.start));
   setEditId(null);setStatus('Засвар хадгалагдлаа. Өмнөх QA баталгаа хүчингүй.');
  }
  function posToTime(clientX:number){
@@ -227,7 +270,7 @@ export default function StudioWorkspace(){
   }else if(textMode&&selected){
    setSegments(old=>old.map(c=>c.id===selected.id?{
     ...c,text:b.text,kind:kindFromRole(role)==='unknown'?c.kind:kindFromRole(role),
-    frameSec:b.frameSec,ocrId:b.id,styleSignature:styleSignature(b),
+    frameSec:b.frameSec,ocrId:b.id,styleSignature:styleSignature(b),revisionId:undefined,checks:emptyQa(),
     qa:'REVIEW_REQUIRED' as const,updatedAt:new Date().toISOString()
    }:c));
    setTextMode(false);
@@ -317,6 +360,7 @@ export default function StudioWorkspace(){
    <button onClick={()=>filePicker.current?.click()}><FolderOpen size={17}/> Файл нээх</button>
    <button onClick={()=>importPicker.current?.click()}><FileVideo size={17}/> Бүртгэл оруулах</button>
    <button onClick={exportJson}><Download size={17}/> JSON экспорт</button>
+   {media.sourceId&&<button onClick={()=>void downloadAppReady()}>APP_READY JSON</button>}
    <button onClick={()=>void media.upload()} disabled={!file||media.working||!!media.sourceId}>
     <Save size={17}/> {media.working&&media.progress!==null?'Импорт '+media.progress+'%':media.sourceId?'FFmpeg бэлэн':'Локал аудио холбох'}
    </button>
@@ -351,14 +395,14 @@ export default function StudioWorkspace(){
      {rows.length===0?<div className="bybe-empty">Энэ хэсэгт аудионы мөр алга. Доод хугацааны шугамаас хэсэг сонгоод, <b>T</b> дарж видеоны текст дээр товшино.</div>:
       rows.map(s=><div key={s.id} ref={r=>{rowRefs.current[s.id]=r;}} className={'bybe-row '+(activeId===s.id?'is-current ':'')+(selectedId===s.id?'is-selected':'')}>
        <button className="bybe-row-text" onClick={()=>{setSelectedId(s.id);const v=video.current;if(v){v.currentTime=s.start;v.pause();}}} title="Видеог энэ хэсэгт очуулах">
-        <span>{s.text}</span><small>{time(s.start)}–{time(s.end)} · {kindNames[s.kind]}</small>
+        <span>{s.text}</span><small>{time(s.start)}–{time(s.end)} · {kindNames[s.kind]} · {s.qa==='MANUALLY_VERIFIED'?'✓ QA баталсан':'QA шалгах'}</small>
        </button>
        <div className="bybe-row-actions">
         <button title="Сонсох" aria-label={s.text+' сонсох'} onClick={()=>play(s,false)}><Play size={15}/></button>
         <button className={loop===s.id?'is-loop':''} title="Тасралтгүй давтах" aria-label={s.text+' давтах'} onClick={()=>loop===s.id?(setLoop(null),video.current?.pause()):play(s,true)}><Repeat2 size={15}/></button>
         <button title="Засах" aria-label={s.text+' засах'} onClick={()=>beginEdit(s)}><Edit3 size={15}/></button>
         <button disabled={!media.sourceId||media.working} title="Жинхэнэ WAV шинэ хувилбар хадгалах (QA шалгах шаардлагатай)"
-         aria-label={s.text+' WAV үүсгэх'} onClick={()=>void media.exportWav(s)}><Download size={15}/></button>
+         aria-label={s.text+' WAV үүсгэх'} onClick={()=>void exportClip(s)}><Download size={15}/></button>
        </div>
       </div>)}
      {unlinked.map(b=><div key={b.id} className="bybe-ocr-row">
@@ -446,6 +490,15 @@ export default function StudioWorkspace(){
      <label>Эхлэл (сек)<input type="number" step=".001" value={editDraft.start} onChange={e=>setEditDraft(v=>({...v,start:e.target.value}))}/></label>
      <label>Төгсгөл (сек)<input type="number" step=".001" value={editDraft.end} onChange={e=>setEditDraft(v=>({...v,end:e.target.value}))}/></label>
     </div>
+    {editing.revisionId&&media.sourceId&&<div className="bybe-export-qa">
+     <h3>WAV хүний QA шалгалт</h3>
+     <audio controls preload="none" src={'/api/media/'+media.sourceId+'/revisions/'+editing.revisionId+'/download'}/>
+     <div className="bybe-qa-grid">{(Object.keys(qaItems) as QAKey[]).map(key=>
+      <label key={key}><input type="checkbox" checked={qaChecks[key]}
+       onChange={e=>setQaChecks(old=>({...old,[key]:e.target.checked}))}/>{qaItems[key]}</label>)}</div>
+     <button className="primary" disabled={!Object.values(qaChecks).every(Boolean)} onClick={()=>void verifyEditing()}>
+      ✓ 6 шалгалтаар батлах</button>
+    </div>}
     <div className="bybe-actions"><button onClick={()=>play(editing,false)}><Play size={16}/> Сонсох</button><button onClick={()=>play(editing,true)}><Repeat2 size={16}/> Давтах</button>
       <button className="primary" onClick={saveEdit}><Save size={16}/> Enter · Хадгалах</button></div>
     <p className="bybe-help">Хугацаа/текст засахад QA баталгаа хүчингүй болно. Esc — хаах.</p>
