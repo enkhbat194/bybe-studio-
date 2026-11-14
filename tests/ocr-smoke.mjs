@@ -21,16 +21,6 @@ try{
   encoding:'utf8',timeout:30_000});
  if(ffmpeg.error||ffmpeg.status!==0)throw Error('FFmpeg test image: '+ffmpeg.stderr);
  const pixels=await fsp.readFile(file);
- const {createWorker,PSM}=await import('tesseract.js');
- const rawWorker=await createWorker(['ces','eng']);
- await rawWorker.setParameters({tessedit_pageseg_mode:PSM.SPARSE_TEXT});
- const result=await rawWorker.recognize(pixels,{}, {text:true,tsv:true,blocks:true});
- console.log('DEBUG raw Tesseract format:',JSON.stringify({
-  keys:Object.keys(result.data),text:result.data.text?.slice(0,200),
-  tsvType:typeof result.data.tsv,tsv:typeof result.data.tsv==='string'?result.data.tsv.slice(0,350):undefined,
-  blockType:typeof result.data.blocks,blocks:Array.isArray(result.data.blocks)?result.data.blocks.length:0
- }));
- await rawWorker.terminate();
  const blocks=await localOcr(pixels,960,540,10.56);
  const cz=blocks.find(b=>b.text.toLocaleLowerCase('cs').includes('růžová'));
  const eng=blocks.find(b=>b.text.toLowerCase().includes('pink'));
