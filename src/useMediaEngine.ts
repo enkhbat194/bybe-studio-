@@ -18,6 +18,7 @@ async function request(url:string,method='GET',payload?:unknown):Promise<any>{
 const mediaKey=(file:File)=>'bybe-media-v1:'+file.name+':'+file.size+':'+file.lastModified;
 export function useMediaEngine(file:File|null,start:number,end:number){
  const [sourceId,setSourceId]=useState('');
+ const [sourceDuration,setSourceDuration]=useState(0);
  const [status,setStatus]=useState('');
  const [progress,setProgress]=useState<number|null>(null);
  const [working,setWorking]=useState(false);
@@ -28,13 +29,13 @@ export function useMediaEngine(file:File|null,start:number,end:number){
  const fileKey=file?mediaKey(file):'';
  useEffect(()=>{
   let alive=true;
-  setSourceId('');setPeaks([]);setProgress(null);setStatus('');setLastRevision(null);setPreviewUrl('');
+  setSourceId('');setSourceDuration(0);setPeaks([]);setProgress(null);setStatus('');setLastRevision(null);setPreviewUrl('');
   if(!file)return;
   const id=localStorage.getItem(fileKey);
   if(!id)return;
   request('/api/media/'+id).then((m:Meta)=>{
    if(!alive)return;
-   if(m.state==='ready'){setSourceId(id);setStatus('Эх файл локал хөдөлгүүрт бэлэн.');}
+   if(m.state==='ready'){setSourceId(id);setSourceDuration(m.duration||0);setStatus('Эх файл локал хөдөлгүүрт бэлэн.');}
    else{setStatus('Өмнөх импорт '+Math.floor(m.uploaded/m.size*100)+'% — үргэлжлүүлэх боломжтой.');}
   }).catch(()=>{if(alive)localStorage.removeItem(fileKey);});
   return()=>{alive=false;};
@@ -52,7 +53,7 @@ export function useMediaEngine(file:File|null,start:number,end:number){
     id=meta.id;localStorage.setItem(fileKey,id);
    }
    if(meta.state==='ready'){
-    setSourceId(id);setProgress(100);setStatus('Эх файл бэлэн.');return;
+    setSourceId(id);setSourceDuration(meta.duration||0);setProgress(100);setStatus('Эх файл бэлэн.');return;
    }
    let offset=meta.uploaded;
    while(offset<file.size){
@@ -72,8 +73,8 @@ export function useMediaEngine(file:File|null,start:number,end:number){
     setStatus('Эх файлыг энэ компьютерийн локал хөдөлгүүрт холбож байна: '+Math.round(offset/file.size*100)+'%');
    }
    setStatus('FFprobe мэдээлэл ба файлын SHA-256 шалгаж байна…');
-   await request('/api/media/'+id+'/finish','POST',{});
-   setSourceId(id);setProgress(100);setStatus('Импорт дууссан. WAV болон бодит waveform ашиглаж болно.');
+   const done=await request('/api/media/'+id+'/finish','POST',{});
+   setSourceDuration(done.duration||0);setSourceId(id);setProgress(100);setStatus('Импорт дууссан. WAV болон бодит waveform ашиглаж болно.');
   }catch(e){setStatus(e instanceof Error?e.message:'Импортын алдаа');}
   finally{setWorking(false);abort.current=null;}
  },[file,fileKey,working]);
@@ -106,5 +107,5 @@ export function useMediaEngine(file:File|null,start:number,end:number){
   }catch(e){setStatus(e instanceof Error?e.message:'Видео бэлтгэхэд алдаа');}
   finally{setWorking(false);}
  },[sourceId]);
- return {sourceId,status,progress,working,peaks,lastRevision,previewUrl,upload,exportWav,preparePreview,cancel:()=>abort.current?.abort()};
+ return {sourceId,sourceDuration,status,progress,working,peaks,lastRevision,previewUrl,upload,exportWav,preparePreview,cancel:()=>abort.current?.abort()};
 }
