@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AudioLines, Check, ChevronLeft, ChevronRight, Clipboard, Download, Edit3, FileVideo, FolderOpen, Play, Repeat2, Save, ScanText, Settings2, X } from 'lucide-react';
 import { planParts, owningPart } from './lib/parts';
 import { proposeTextLinks } from './lib/ocrMatch';
-import { effectiveRole, roleLabel, sameScreenText, styleRuleFromBlock, styleSignature, validateBlock, type FrameResult, type OcrBlock, type StyleRule, type TextRole } from './lib/typography';
+import { effectiveRole, roleLabel, sameScreenText, styleRuleFromBlock, styleSignature, usefulVideoText, validateBlock, type FrameResult, type OcrBlock, type StyleRule, type TextRole } from './lib/typography';
 import { useMediaEngine } from './useMediaEngine';
 import { useBackgroundScan } from './useBackgroundScan';
 import { useBackgroundAsr, type AsrCandidate } from './useBackgroundAsr';
@@ -103,12 +103,12 @@ export default function StudioWorkspace(){
  const selected=segments.find(s=>s.id===selectedId)??null;
  const editing=segments.find(s=>s.id===editId)??null;
  const frame=nearestFrame(frames,current);
- const visibleBlocks=frame?.blocks.filter(b=>effectiveRole(b,styleRules)!=='ignore')??[];
+ const visibleBlocks=textMode?(frame?.blocks.filter(b=>usefulVideoText(b)&&effectiveRole(b,styleRules)!=='ignore')??[]):[];
  const reviewCount=segments.filter(s=>s.qa==='REVIEW_REQUIRED').length;
  const collected=useMemo(()=>{
   const list:OcrBlock[]=[];
   for(const snap of frames){for(const block of snap.blocks){
-    if(effectiveRole(block,styleRules)==='ignore')continue;
+    if(!usefulVideoText(block)||effectiveRole(block,styleRules)==='ignore')continue;
     if(!list.some(old=>sameScreenText(old,block)))list.push(block);
   }}
   return list.sort((a,b)=>a.frameSec-b.frameSec);
@@ -465,7 +465,7 @@ export default function StudioWorkspace(){
     width:100/media.peaks.length+'%',
   }}/>
  )),[media.peaks]);
- const ocrBlocks=frames.reduce((count,f)=>count+f.blocks.length,0);
+ const ocrBlocks=frames.reduce((count,f)=>count+f.blocks.filter(usefulVideoText).length,0);
  const estimated=segments.filter(s=>s.origin==='VISUAL_AUDIO_ESTIMATE').length;
  const issues=[
   ...(capabilities&&(!capabilities.ffmpeg||!capabilities.ffprobe)?['FFmpeg эсвэл FFprobe байхгүй. WAV, waveform, OCR хөдөлгүүр ажиллахгүй.']:[]),
