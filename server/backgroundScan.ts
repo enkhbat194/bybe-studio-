@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { localOcr } from './ocrLocal';
 import { getLocalSource, ffRun } from './mediaLibrary';
 import { planParts } from '../src/lib/parts';
@@ -19,7 +19,7 @@ export interface ScanJob {
 }
 const jobs=new Map<string,ScanJob>();
 let active:string|null=null;
-let activeProcess:ChildProcessWithoutNullStreams|null=null;
+let activeProcess:ChildProcess|null=null;
 let initialized=false;
 const jobPath=(id:string)=>path.join(ROOT,id+'.json');
 const partPath=(id:string,index:number)=>path.join(ROOT,id+'-part-'+index+'.json');
