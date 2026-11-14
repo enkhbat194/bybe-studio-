@@ -18,7 +18,7 @@ export interface SourceMeta{
 }
 export interface RevisionMeta{
  id:string;clipId?:string;text:string;kind:string;start:number;end:number;
- filename:string;sha256:string;bytes:number;createdAt:string;qa:'REVIEW_REQUIRED';
+ filename:string;sha256:string;bytes:number;createdAt:string;qa:'REVIEW_REQUIRED'|'MANUALLY_VERIFIED';checks?:Record<string,boolean>;verifiedAt?:string;
 }
 export type Runner = (args:string[],binary?:string)=>Promise<{code:number;stdout:Buffer;stderr:string}>;
 
@@ -235,6 +235,38 @@ export function registerMediaRoutes(app:Express):void{
  });
  app.get('/api/media/:id/revisions',async(req,res)=>{
   const m=await sourceOr404(req.params.id,res);if(m)res.json({revisions:m.revisions});
+ });
+ app.post('/api/media/:id/revisions/:revisionId/verify',async(req,res)=>{
+  const id=req.params.id,revisionId=req.params.revisionId;
+  const required=['start_heard','end_heard','whole_heard','language_correct','text_correct','role_correct'];
+  const checks=req.body?.checks;
+  if(!checks||typeof checks!=='object'||required.some(k=>checks[k]!==true)){
+   res.status(400).json({error:'Зургаан сонсголын QA шалгалт бүгд баталгаажсан байх ёстой.'});return;
+  }
+  try{
+   const revision=await serial(id,async()=>{
+    const m=await load(id);if(!m)throw Error('Эх файл олдсонгүй.');
+    const r=m.revisions.find(x=>x.id===revisionId);
+    if(!r)throw Error('WAV revision олдсонгүй.');
+    if(req.body?.clipId!==r.clipId||req.body?.text!==r.text||Number(req.body?.start)!==r.start||
+       Number(req.body?.end)!==r.end||req.body?.kind!==r.kind){
+      throw Error('Аудионы текст/хугацаа өөрчлөгдсөн байна. Шинэ WAV export шаардлагатай.');
+    }
+    const file=path.join(sourceDir(id),'revisions',r.filename);
+    if((await sha256(file))!==r.sha256)throw Error('WAV хэш зөрсөн. QA боломжгүй.');
+    r.qa='MANUALLY_VERIFIED';r.checks=Object.fromEntries(required.map(k=>[k,true]));
+    r.verifiedAt=new Date().toISOString();
+    await save(m);return r;
+   });
+   res.json(revision);
+  }catch(e){fail(res,e,409);}
+ });
+ app.get('/api/media/:id/app-ready',async(req,res)=>{
+  const m=await sourceOr404(req.params.id,res);if(!m)return;
+  res.json({schema:'bybe-app-ready-v1',sourceSha256:m.hash,sourceName:m.filename,
+    clips:m.revisions.filter(r=>r.qa==='MANUALLY_VERIFIED')
+      .map(r=>({revisionId:r.id,clipId:r.clipId,text:r.text,kind:r.kind,start:r.start,end:r.end,
+        filename:r.filename,sha256:r.sha256,verifiedAt:r.verifiedAt}))});
  });
  app.get('/api/media/:id/revisions/:revisionId/download',async(req,res)=>{
   const m=await sourceOr404(req.params.id,res);if(!m)return;
