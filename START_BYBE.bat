@@ -26,6 +26,15 @@ if not exist "node_modules\tsx" (
   exit /b 1
  )
 )
+where ffmpeg >nul 2>nul
+if errorlevel 1 (
+ echo WARNING: FFmpeg not found. WAV export, waveform, video preview and automatic scan will not work.
+ echo Add ffmpeg.exe and ffprobe.exe to your Windows PATH and restart this window.
+)
+where ffprobe >nul 2>nul
+if errorlevel 1 (
+ echo WARNING: FFprobe not found. Local video import cannot finish.
+)
 echo.
 echo Starting local BYBE Studio...
 echo When ready open http://localhost:3000
