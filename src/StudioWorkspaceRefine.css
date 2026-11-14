@@ -149,3 +149,6 @@
  .bybe-video-holder{padding:6px 6px 0}
  .bybe-statusline{gap:6px}
 }
+
+.bybe-asr-install-note{font-size:12px;color:#f1ce92;background:#3b2c20;padding:7px 9px;border-radius:6px;border:1px solid #77573b}
+.bybe-asr-install-note code{color:#ffe6ba;font-size:11px}
