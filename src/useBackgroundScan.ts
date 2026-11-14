@@ -24,6 +24,7 @@ export function useBackgroundScan(sourceId:string,addFrames:(frames:FrameResult[
   let alive=true;
   let jobId=localStorage.getItem('bybe-ocr-job:'+sourceId)||'';
   const refresh=async()=>{
+   jobId=localStorage.getItem('bybe-ocr-job:'+sourceId)||jobId;
    if(!jobId)return;
    try{
     const j=await api('/api/scan/'+jobId) as ScanJob;
