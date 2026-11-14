@@ -47,7 +47,10 @@ app.get('/api/system/capabilities',(_req,res)=>{
  const pythonCommand=process.env.BYBE_PYTHON|| (windows?'py':'python3');
  const pythonArgs=windows&&pythonCommand==='py'?['-3.11','--version']:['--version'];
  const python=systemCheck(pythonCommand,pythonArgs);
- res.json({ffmpeg,ffprobe,python,
+ const asrArgs=[...(windows&&pythonCommand==='py'?['-3.11']:[]),'-c',
+  'import importlib.util,sys;sys.exit(0 if importlib.util.find_spec("faster_whisper") else 1)'];
+ const fasterWhisper=python&&systemCheck(pythonCommand,asrArgs);
+ res.json({ffmpeg,ffprobe,python,fasterWhisper,
   ocr:'tesseract-local',asr:'optional-faster-whisper',
   warning:!ffmpeg||!ffprobe?'FFmpeg/FFprobe програм Windows PATH дотор олдсонгүй. Аудио боловсруулахгүй.':null});
 });
