@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 interface Props {
  sourceId:string;sourceDuration:number;
  originalStart:number;originalEnd:number;start:number;end:number;
@@ -93,16 +93,23 @@ export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,or
    onChange(Math.max(0,Math.min(end-.04,t)),end);
   }else onChange(start,Math.min(duration,Math.max(start+.04,t)));
  }
- function wheel(e:ReactWheelEvent<SVGSVGElement>){
-  e.preventDefault();
-  if(e.shiftKey){
-   setWindowStart(clamp(from+Math.sign(e.deltaY)*delta*.25,0,Math.max(0,duration-delta)));
-   return;
-  }
-  const rect=e.currentTarget.getBoundingClientRect();
-  const ratio=clamp((e.clientX-rect.left)/rect.width,0,1);
-  zoom(e.deltaY>0?1.4:1/1.4,from+delta*ratio,ratio);
- }
+ useEffect(()=>{
+  const element=svg.current;if(!element)return;
+  const wheel=(e:WheelEvent)=>{
+   e.preventDefault();
+   if(e.shiftKey){
+    setWindowStart(clamp(from+Math.sign(e.deltaY)*delta*.25,0,Math.max(0,duration-delta)));
+    return;
+   }
+   const rect=element.getBoundingClientRect();
+   const ratio=clamp((e.clientX-rect.left)/Math.max(1,rect.width),0,1);
+   const nextSpan=clamp(actualSpan*(e.deltaY>0?1.4:1/1.4),.5,Math.min(MAX_SPAN,duration));
+   setSpan(nextSpan);
+   setWindowStart(clamp(from+delta*ratio-nextSpan*ratio,0,Math.max(0,duration-nextSpan)));
+  };
+  element.addEventListener('wheel',wheel,{passive:false});
+  return()=>element.removeEventListener('wheel',wheel);
+ },[from,delta,actualSpan,duration]);
  function listen(mode:'selection'|'window'){
   if(!sourceId)return;
   const a=audio.current;if(!a)return;
@@ -134,7 +141,7 @@ export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,or
    Дугуйгаар zoom, Shift + дугуй / Shift + чирэхэд зүүн-баруун тийш шилжинэ.
    Сонгосон аудио өөр газарт байвал гүйлгэгчээр бүтэн бичлэгийн дурын хэсэгт очно.</div>
   <svg ref={svg} viewBox={'0 0 '+W+' '+H} preserveAspectRatio="none"
-   onWheel={wheel} onPointerDown={down} onPointerMove={move}
+   onPointerDown={down} onPointerMove={move}
    onPointerUp={e=>{drag.current=null;if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);}}
    onPointerCancel={()=>{drag.current=null;}}
    style={{width:'100%',height:180,cursor:'ew-resize',touchAction:'none',background:'#071723',borderRadius:8}}>
