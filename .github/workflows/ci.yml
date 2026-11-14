@@ -15,3 +15,7 @@ jobs:
       - run: npm run check
       - run: npm run test
       - run: npm run build
+      - name: Ensure FFmpeg is available
+        run: command -v ffmpeg && command -v ffprobe || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+      - name: Real media API smoke test
+        run: node tests/media-smoke.mjs
