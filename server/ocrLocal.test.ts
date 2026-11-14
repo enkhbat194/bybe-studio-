@@ -24,3 +24,15 @@ test('local OCR rejects malformed TSV rather than inventing text',()=>{
  assert.deepEqual(blocksFromTsv('garbage',1280,720,170),[]);
  assert.deepEqual(blocksFromTsv(h+'\n'+lines[0],0,720,170),[]);
 });
+
+test('Tesseract.js v7 HEADERLESS TSV yields Czech word and English gloss',()=>{
+ const rows=[
+  '1\t1\t0\t0\t0\t0\t0\t0\t960\t540\t-1\t',
+  '5\t1\t1\t1\t1\t1\t68\t48\t233\t58\t96.801559\trůžová',
+  '5\t1\t2\t1\t1\t1\t67\t125\t97\t46\t96.460129\tpink'
+ ].join('\n');
+ const blocks=blocksFromTsv(rows,960,540,10.56);
+ assert.deepEqual(blocks.map(b=>b.text),['růžová','pink']);
+ assert.equal(blocks[0].box.x,68/960);
+ assert.equal(blocks[1].box.y,125/540);
+});
