@@ -3,7 +3,7 @@ import type { FrameResult } from './lib/typography';
 
 interface ScanJob {
  id:string;sourceId:string;status:'queued'|'running'|'paused'|'complete'|'error';
- kind:'ocr';sampleEvery:number;totalParts:number;nextPart:number;framesDone:number;message:string;
+ kind:'ocr';sampleEvery:number;totalParts:number;nextPart:number;framesDone:number;blocksFound?:number;message:string;
 }
 const HEADERS={'X-BYBE-Request':'1','Content-Type':'application/json'};
 async function api(url:string,method='GET',body?:unknown):Promise<any>{
@@ -57,11 +57,12 @@ export function useBackgroundScan(sourceId:string,addFrames:(frames:FrameResult[
   const timer=setInterval(()=>{void refresh();},2000);
   return()=>{alive=false;clearInterval(timer);};
  },[sourceId]);
- async function start(){
+ async function start(force=false){
   if(!sourceId){setMessage('Эх видеог локал хөдөлгүүрт холбоно уу.');return;}
   setBusy(true);
   try{
-   const j=await api('/api/scan/start','POST',{sourceId,sampleEvery:5}) as ScanJob;
+   const j=await api('/api/scan/start','POST',{sourceId,sampleEvery:5,force}) as ScanJob;
+   if(force){after.current=-1;lastLive.current='';}
    localStorage.setItem('bybe-ocr-job:'+sourceId,j.id);
    setJob(j);setMessage('Автомат OCR эхэлсэн. 5 минутын хэсгүүд бэлэн болмогц жагсаалтад нэмэгдэнэ.');
   }catch(e){setMessage(e instanceof Error?e.message:'OCR эхлүүлэхэд алдаа');}
@@ -74,5 +75,5 @@ export function useBackgroundScan(sourceId:string,addFrames:(frames:FrameResult[
   catch(e){setMessage(e instanceof Error?e.message:'OCR удирдлагын алдаа');}
   finally{setBusy(false);}
  }
- return {job,message,busy,start,pause:()=>change('pause'),resume:()=>change('resume')};
+ return {job,message,busy,start,rescan:()=>start(true),pause:()=>change('pause'),resume:()=>change('resume')};
 }
