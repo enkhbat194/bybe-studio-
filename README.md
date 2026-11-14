@@ -39,3 +39,18 @@ GitHub шинэчлэлт бүр AI Studio-д автоматаар татагд�
 - QA localStorage-д хадгалагдана; JSON backup авбал төхөөрөмж/кэш солиход сэргээж болно.
 - Дэлгэцийн OCR timestamp бол ярианы бодит start/end биш.
 - Жинхэнэ WAV хараахан үүсгэдэггүй — бэлэн WAV гэж худал мэдэгдэл гаргахгүй.
+
+## ШИНЭ хөгжүүлэлтийн салбарыг Windows дээр турших (2026-11-15)
+
+Нэг дэлгэцийн editor болон үнэгүй OCR-ийн код нь `feature/typography-ocr-workstation` салбарт байна. `main` болон AI Studio дахь push хийгдээгүй 40 файлыг дарж өөрчлөхгүй.
+
+1. GitHub дээр `feature/typography-ocr-workstation` салбарт очоод **Code → Download ZIP**.
+2. ZIP-ийг компьютерийн тусдаа хавтсанд задла. Node.js 22 LTS суулгасан байхад хангалттай.
+3. **`START_BYBE.bat`** дээр хоёр товш. Энэ нь эхний удаа `npm install` хийж, дараа нь `npm run dev` эхлүүлнэ.
+4. Chrome дээр `http://localhost:3000` нээ. Файл нээх → MP4 видео сонго → Кадрын OCR дар.
+5. `GEMINI_API_KEY` **ШААРДЛАГАГҮЙ**. Default `BYBE_OCR_ENGINE=local`, Tesseract.js Чех/Англи таних загварыг анх интернэтээр татаж болно. Дараа нь локал ажиллана; нөөцлөлтийн баталгаанд traineddata-г тусад нь багцлах шаардлагатай.
+6. Эх MKV файлыг Chrome нээхгүй бол `ffmpeg -i "source.mkv" -c copy "preview.mp4"` ашигла (H264/AAC MKV тохиолдолд чанарын алдагдалгүй). Хөтөч дэмжихгүй кодектой бол дахин кодлох хэрэгтэй.
+
+**Одоогоор:** жинхэнэ waveform, background auto-OCR, Whisper/Qwen, FFmpeg WAV экспорт байхгүй. Доод хэсэг одоогоор хугацаа сонгох timeline.
+
+Албан хэрэгжүүлэлтийн шат, шалгуур: [docs/ROADMAP_MN.md](docs/ROADMAP_MN.md). Баримтжуулсан current scope: [docs/WORKSTATION_STATUS_MN.md](docs/WORKSTATION_STATUS_MN.md).
