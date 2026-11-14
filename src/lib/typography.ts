@@ -52,6 +52,25 @@ export function sameScreenText(a:OcrBlock,b:OcrBlock):boolean {
   return a.text.toLocaleLowerCase().replace(/\s+/g,' ')===b.text.toLocaleLowerCase().replace(/\s+/g,' ') &&
     styleSignature(a)===styleSignature(b);
 }
+/**
+ * Video overlay usability filter, not a claim of perfect OCR:
+ * ignore microscopic presenter-face artifacts, watermark, counters, etc.
+ * Keep prominent isolated words and bottom subtitles for manual review.
+ */
+export function usefulVideoText(b:OcrBlock):boolean {
+ const value=b.text.normalize('NFC').trim();
+ if(value.length<2||value.length>250)return false;
+ if(/(?:CzechClass101|https?:|www\\.|subscribe|^\\d+[,.]?\\d*$)/i.test(value))return false;
+ const letters=(value.match(/[\\p{L}]/gu)||[]).length;
+ if(letters<2||letters/Math.max(1,value.length)<.48)return false;
+ if(b.box.w<.026||b.box.h<.020)return false;
+ const primary=b.box.h>=.039&&b.box.y<.73&&b.box.x<.82;
+ const subtitle=b.box.y>=.62&&b.box.y<.96&&b.box.h>=.023&&
+   (value.length>=8||value.split(/\\s+/).length>=2);
+ const upperLeft=b.box.x<.5&&b.box.y<.38&&b.box.h>=.027&&value.length>=3;
+ return primary||subtitle||upperLeft;
+}
+
 export function canSelectAsText(block:OcrBlock,rules:StyleRule[]):boolean {
   return effectiveRole(block,rules)!=='ignore';
 }
