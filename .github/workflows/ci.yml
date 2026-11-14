@@ -26,3 +26,6 @@ jobs:
       - name: Real Czech-English local OCR smoke test (no API key)
         run: node --import tsx tests/ocr-smoke.mjs
         timeout-minutes: 5
+      - name: End-to-end automatic OCR audio linking (no Whisper API)
+        run: node --import tsx tests/auto-link-smoke.mjs
+        timeout-minutes: 5
