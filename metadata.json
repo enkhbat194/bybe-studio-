@@ -1,0 +1,10 @@
+{
+  "name": "BYBE Studio",
+  "description": "Чех 800 үгийн видео текст таних, дөрвөн аудионы хугацаа засах, хүний QA баталгаажуулах Монгол интерфэйс",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
