@@ -18,6 +18,8 @@ export interface ScanJob {
  message:string;createdAt:string;updatedAt:string;
 }
 const jobs=new Map<string,ScanJob>();
+// Current partial results are exposed immediately; finished parts stay on disk.
+const live=new Map<string,{partIndex:number;version:number;frames:FrameResult[]}>();
 let active:string|null=null;
 let activeProcess:ChildProcess|null=null;
 let initialized=false;
@@ -52,6 +54,7 @@ async function scanPart(job:ScanJob,file:string,coreStart:number,coreEnd:number,
  activeProcess=child;
  let stderr='',pending=Buffer.alloc(0),count=0;
  const frames:FrameResult[]=[];
+ let liveVersion=0;
  child.stderr.on('data',(c:Buffer)=>{stderr=(stderr+c.toString('utf8')).slice(-1000);});
  const exitPromise=new Promise<number>((resolve,reject)=>{
   child.on('close',code=>resolve(code??-1));child.on('error',reject);
@@ -75,7 +78,10 @@ async function scanPart(job:ScanJob,file:string,coreStart:number,coreEnd:number,
      // Do not store repeated identical title cards; preserve the first evidence frame.
      const previous=frames[frames.length-1];
      const fingerprint=(xs:typeof blocks)=>xs.map(x=>x.text.trim().toLowerCase()).sort().join('|');
-     if(!previous||fingerprint(previous.blocks)!==fingerprint(blocks))frames.push({frameSec,blocks});
+     if(!previous||fingerprint(previous.blocks)!==fingerprint(blocks)){
+      frames.push({frameSec,blocks});
+      live.set(job.id,{partIndex:job.nextPart,version:++liveVersion,frames:frames.slice()});
+     }
     }
     job.framesDone++;
     job.message='OCR · хэсэг '+(job.nextPart+1)+'/'+job.totalParts+' · '+count+' кадр';
@@ -109,13 +115,15 @@ async function runQueue(){
    const tmp=partPath(job.id,job.nextPart)+'.tmp';
    await fsp.writeFile(tmp,JSON.stringify({partIndex:job.nextPart,coreStart:p.coreStart,coreEnd:p.coreEnd,frames}));
    await fsp.rename(tmp,partPath(job.id,job.nextPart));
-   job.nextPart++;job.message='Хэсэг '+job.nextPart+'/'+parts.length+' OCR бэлэн';
+   job.nextPart++;live.delete(job.id);
+   job.message='Хэсэг '+job.nextPart+'/'+parts.length+' OCR бэлэн';
    await save(job);
   }
   if(!paused(job)){job.status='complete';job.message='Бүх хэсгийн OCR дууссан';}
  }catch(e){
   job.status='error';job.message=e instanceof Error?e.message:'OCR боловсруулах алдаа';
  }finally{
+  live.delete(job.id);
   await save(job);active=null;void runQueue();
  }
 }
@@ -157,6 +165,12 @@ export function registerScanRoutes(app:Express){
   const j=jobs.get(req.params.id);
   if(!j){res.status(404).json({error:'OCR job олдсонгүй.'});return;}
   res.json(j);
+ });
+ app.get('/api/scan/:id/live',async(req,res)=>{
+  const j=jobs.get(req.params.id);
+  if(!j){res.status(404).json({error:'OCR job олдсонгүй.'});return;}
+  const current=live.get(j.id);
+  res.json(current||{partIndex:j.nextPart,version:0,frames:[]});
  });
  app.get('/api/scan/:id/results',async(req,res)=>{
   const j=jobs.get(req.params.id);
