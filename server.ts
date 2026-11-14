@@ -5,10 +5,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
 import { registerTypographyRoutes } from './server/ocrTypography';
+import { registerMediaRoutes } from './server/mediaLibrary';
 
 const app=express();
 const PORT=Number(process.env.PORT||3000);
-const HOST=process.env.HOST||'0.0.0.0';
+// Bind to the current PC only: do NOT expose media and FFmpeg endpoints on the LAN.
+const HOST=process.env.HOST||'127.0.0.1';
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
 app.disable('x-powered-by');
 app.use(express.json({limit:'6mb'}));
@@ -24,6 +26,7 @@ function sendError(error:unknown):string {
   return 'AI хүсэлт амжилтгүй боллоо. Серверийн логийг шалгана уу.';
 }
 registerTypographyRoutes(app,client);
+registerMediaRoutes(app);
 app.get('/api/health',(_req,res)=>res.json({ok:true,hasApiKey:client()!==null,locale:'mn',
   liveVoiceEnabled:process.env.BYBE_ENABLE_LIVE_VOICE==='true',
   ocrEngine:process.env.BYBE_OCR_ENGINE==='gemini'?'gemini-opt-in':'tesseract-local'}));
