@@ -14,7 +14,7 @@ const JOB_ID=/^[0-9a-f-]{36}$/;
 export type JobStatus='queued'|'running'|'paused'|'complete'|'error';
 export interface ScanJob {
  id:string;sourceId:string;status:JobStatus;kind:'ocr';sampleEvery:number;
- totalParts:number;nextPart:number;framesDone:number;
+ totalParts:number;nextPart:number;framesDone:number;blocksFound?:number;
  message:string;createdAt:string;updatedAt:string;
 }
 const jobs=new Map<string,ScanJob>();
@@ -115,11 +115,20 @@ async function runQueue(){
    const tmp=partPath(job.id,job.nextPart)+'.tmp';
    await fsp.writeFile(tmp,JSON.stringify({partIndex:job.nextPart,coreStart:p.coreStart,coreEnd:p.coreEnd,frames}));
    await fsp.rename(tmp,partPath(job.id,job.nextPart));
+   job.blocksFound=(job.blocksFound??0)+frames.reduce((count,f)=>count+f.blocks.length,0);
    job.nextPart++;live.delete(job.id);
    job.message='Хэсэг '+job.nextPart+'/'+parts.length+' OCR бэлэн';
    await save(job);
   }
-  if(!paused(job)){job.status='complete';job.message='Бүх хэсгийн OCR дууссан';}
+  if(!paused(job)){
+   if(!(job.blocksFound??0)){
+    job.status='error';
+    job.message='OCR кадруудыг шалгасан боловч нэг ч текст таньсангүй. Sparse Text горимоор дахин шинжлэх шаардлагатай.';
+   }else{
+    job.status='complete';
+    job.message='OCR '+(job.blocksFound??0)+' бичвэртэй дууссан';
+   }
+  }
  }catch(e){
   job.status='error';job.message=e instanceof Error?e.message:'OCR боловсруулах алдаа';
  }finally{
@@ -149,15 +158,16 @@ export function registerScanRoutes(app:Express){
  });
  app.post('/api/scan/start',async(req,res)=>{
   const sourceId=req.body?.sourceId,sampleEvery=Number(req.body?.sampleEvery||5);
+  const force=req.body?.force===true;
   if(typeof sourceId!=='string'||!JOB_ID.test(sourceId)||![3,4,5,8,10].includes(sampleEvery)){
    res.status(400).json({error:'Эх видео эсвэл OCR давтамж буруу байна.'});return;
   }
   const source=await getLocalSource(sourceId);
   if(!source||!source.meta.duration){res.status(404).json({error:'Эх видео локал хөдөлгүүрт бэлэн биш.'});return;}
   const existing=Array.from(jobs.values()).find(j=>j.sourceId===sourceId&&j.kind==='ocr'&&j.status!=='error');
-  if(existing){res.json(existing);return;}
+  if(existing && (!force || ['queued','running','paused'].includes(existing.status))){res.json(existing);return;}
   const job:ScanJob={id:randomUUID(),sourceId,status:'queued',kind:'ocr',sampleEvery,
-   totalParts:planParts(source.meta.duration,5,2).length,nextPart:0,framesDone:0,
+   totalParts:planParts(source.meta.duration,5,2).length,nextPart:0,framesDone:0,blocksFound:0,
    message:'OCR дараалалд орлоо',createdAt:now(),updatedAt:now()};
   jobs.set(job.id,job);await save(job);res.json(job);void runQueue();
  });
