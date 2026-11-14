@@ -50,3 +50,8 @@
 .bybe-edit-fields label:first-child,.bybe-edit-fields label:nth-child(2){grid-column:span 2}
 @media(max-width:1000px){.bybe-core{grid-template-columns:1fr}.bybe-rows{max-height:360px}.bybe-top-status{width:100%;margin:5px 0 0}.bybe-video-holder{min-height:250px}}
 @media(max-width:600px){.bybe-workstation{padding:7px}.bybe-menu{padding:10px}.bybe-menu button{font-size:11px;padding:7px}.bybe-core{gap:7px;margin:7px 0}.bybe-video-holder{padding:6px;min-height:200px}.bybe-partnav{gap:5px}.bybe-partnav span{font-size:10px}.bybe-timeline-footer span:nth-child(2){max-width:55%;text-align:center}}
+
+.bybe-ocr-row{display:flex;gap:6px;align-items:center;margin:6px 0;background:#1b2433;border:1px dashed #4f7594;border-radius:9px;padding:6px}
+.bybe-ocr-row .bybe-row-text{flex:1}
+.bybe-ocr-row .bybe-row-text span{color:#d0effb}
+.bybe-ocr-row>button:not(.bybe-row-text){padding:7px}
