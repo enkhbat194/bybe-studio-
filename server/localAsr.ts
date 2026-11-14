@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { getLocalSource } from './mediaLibrary';
 
-type AsrReply={id:string;ok:boolean;error?:string;segments?:unknown[];language?:string;device?:string;status?:string};
+export type AsrReply={id:string;ok:boolean;error?:string;segments?:unknown[];language?:string;device?:string;status?:string};
 let worker:ChildProcessWithoutNullStreams|null=null;
 let pending=new Map<string,{resolve:(v:AsrReply)=>void;reject:(e:Error)=>void;timer:NodeJS.Timeout}>();
 let stdoutBuffer='',stderrTail='';
@@ -39,7 +39,7 @@ function launchWorker():ChildProcessWithoutNullStreams{
  child.on('exit',code=>failAll('ASR worker зогссон ('+code+'). '+stderrTail.slice(-350)));
  return child;
 }
-async function transcribe(source:string,start:number,end:number):Promise<AsrReply>{
+export async function transcribeLocalPart(source:string,start:number,end:number):Promise<AsrReply>{
  return new Promise<AsrReply>((resolve,reject)=>{
   const id=randomUUID(),child=launchWorker();
   const timer=setTimeout(()=>{child.kill();},20*60*1000);
@@ -70,7 +70,7 @@ export function registerLocalAsrRoutes(app:Express){
    res.status(404).json({error:'ASR эх файл олдсонгүй.'});return;
   }
   try{
-   const output=await transcribe(source.filepath,start,end);
+   const output=await transcribeLocalPart(source.filepath,start,end);
    res.json(output);
   }catch(e){
    res.status(502).json({error:e instanceof Error?e.message:'Локал Whisper яриа таних алдаа.'});
