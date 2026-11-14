@@ -93,7 +93,7 @@ export function proposeVisualAudio(frames:FrameResult[],peaks:number[],start:num
   const windowEnd=Math.min(end,next?.start??slide.start+45,slide.start+50);
   if(windowEnd-windowStart<.5)continue;
   const candidates=utterances.filter(v=>v.end>windowStart&&v.start<windowEnd)
-   .filter(v=>v.start>=slide.start-2.0).slice(0,8);
+   .filter(v=>v.start>=slide.start-2.0).slice(0,6);
   if(!candidates.length)continue;
   // The position labels are a template guess for common bilingual vocabulary videos,
   // NOT an AI transcript: unknown audio type remains unknown pending listening.
