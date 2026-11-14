@@ -25,3 +25,14 @@ test('6-hour duration yields 72 five-minute parts and no duplicate ownership',()
 test('malformed OCR boxes rejected',()=>{
  assert.equal(validateBlock({text:'x',box:{x:.8,y:.8,w:.6,h:.6}},2,0),null);
 });
+
+test('OCR visual overlay filter allows Czech title and subtitle, rejects watermark/face artifacts',async()=>{
+ const {usefulVideoText}=await import('./typography.js');
+ const base={id:'x',frameSec:0,size:'large' as const,weight:'unknown' as const,
+  color:'unknown' as const,proposedRole:'unknown' as const};
+ const title={...base,text:'růžová',box:{x:.05,y:.12,w:.2,h:.06}};
+ assert.equal(usefulVideoText(title),true);
+ assert.equal(usefulVideoText({...title,text:'CzechClass101.com',box:{x:.78,y:.01,w:.2,h:.03}}),false);
+ assert.equal(usefulVideoText({...title,text:'M',box:{x:.48,y:.5,w:.03,h:.02}}),false);
+ assert.equal(usefulVideoText({...title,text:'Nosí zlaté oční stíny.',box:{x:.2,y:.76,w:.5,h:.05}}),true);
+});
