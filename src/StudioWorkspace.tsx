@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AudioLines, Check, ChevronLeft, ChevronRight, Clipboard, Download, Edit3, FileVideo, FolderOpen, Play, Repeat2, Save, ScanText, Settings2, X } from 'lucide-react';
 import { planParts, owningPart } from './lib/parts';
+import { proposeTextLinks } from './lib/ocrMatch';
 import { effectiveRole, roleLabel, sameScreenText, styleRuleFromBlock, styleSignature, validateBlock, type FrameResult, type OcrBlock, type StyleRule, type TextRole } from './lib/typography';
 import { useMediaEngine } from './useMediaEngine';
 import { useBackgroundScan } from './useBackgroundScan';
@@ -17,7 +18,7 @@ type QAKey=keyof typeof qaItems;
 const emptyQa=():Record<QAKey,boolean>=>Object.fromEntries(Object.keys(qaItems).map(k=>[k,false])) as Record<QAKey,boolean>;
 interface Segment {
  id:string;sourceKey:string;text:string;kind:ClipKind;start:number;end:number;
- revisionId?:string;checks?:Record<QAKey,boolean>;
+ revisionId?:string;checks?:Record<QAKey,boolean>;matchStatus?:'AUTO_SUGGESTED';
  frameSec:number|null;ocrId:string|null;styleSignature:string|null;
  qa:'REVIEW_REQUIRED'|'MANUALLY_VERIFIED';updatedAt:string;
 }
@@ -109,8 +110,23 @@ export default function StudioWorkspace(){
  },[frames,styleRules]);
  const unlinked=collected.filter(b=>b.frameSec>=part.coreStart&&b.frameSec<part.coreEnd&&!segments.some(s=>s.ocrId===b.id||s.text===b.text&&Math.abs((s.frameSec??-100)-b.frameSec)<10));
 
+ // Connect only high-similarity OCR and ASR results; never certify quality.
  useEffect(()=>{
-  fetch('/api/health').then(r=>r.json())
+  if(!frames.length||!segments.length)return;
+  const proposed=proposeTextLinks(segments,frames);
+  if(!proposed.length)return;
+  const byClip=new Map(proposed.map(m=>[m.clipId,m]));
+  setSegments(old=>old.map(segment=>{
+   const linked=byClip.get(segment.id);
+   if(!linked||segment.ocrId||segment.qa==='MANUALLY_VERIFIED')return segment;
+   const block=frames.find(f=>f.frameSec===linked.frameSec)?.blocks.find(b=>b.id===linked.ocrId);
+   if(!block)return segment;
+   return {...segment,ocrId:linked.ocrId,frameSec:linked.frameSec,
+    styleSignature:styleSignature(block),matchStatus:'AUTO_SUGGESTED' as const};
+  }));
+ },[frames,segments]);
+ useEffect(()=>{
+  fetch('/api/health'.then(r=>r.json())
    .then(v=>setOcrMode(v.ocrEngine==='gemini-opt-in'?'Gemini OCR (сонголт)':'Локал OCR · үнэгүй')).catch(()=>{});
   fetch('/api/system/capabilities').then(r=>r.json()).then(setCapabilities).catch(()=>{});
  },[]);
@@ -485,7 +501,7 @@ export default function StudioWorkspace(){
      </div>:
       rows.map(s=><div key={s.id} ref={r=>{rowRefs.current[s.id]=r;}} className={'bybe-row '+(activeId===s.id?'is-current ':'')+(selectedId===s.id?'is-selected':'')}>
        <button className="bybe-row-text" onClick={()=>{setSelectedId(s.id);const v=video.current;if(v){v.currentTime=s.start;v.pause();}}} title="Видеог энэ хэсэгт очуулах">
-        <span>{s.text}</span><small>{time(s.start)}–{time(s.end)} · {kindNames[s.kind]} · {s.qa==='MANUALLY_VERIFIED'?'✓ QA баталсан':'QA шалгах'}</small>
+        <span>{s.text}</span><small>{time(s.start)}–{time(s.end)} · {kindNames[s.kind]} · {s.qa==='MANUALLY_VERIFIED'?'✓ QA баталсан':s.matchStatus==='AUTO_SUGGESTED'?'OCR таарсан (шалгаагүй)':'QA шалгах'}</small>
        </button>
        <div className="bybe-row-actions">
         <button title="Сонсох" aria-label={s.text+' сонсох'} onClick={()=>play(s,false)}><Play size={15}/></button>
