@@ -1,37 +1,55 @@
-# Google AI Studio Build — BYBE Studio master prompt (MN)
+# BYBE Studio — Google AI Studio ↔ GitHub аюулгүй нэгтгэх MASTER PROMPT
+Огноо: 2026-11-15
 
-АЖЛЫН ҮНДСЭН REPO: https://github.com/enkhbat194/bybe-studio-
-Branch: main. Өмнөх bybe-studio репог үндсэн source болгон бүү сонго.
+## Одоогийн бодит төлөв
+- Google AI Studio Build нь enkhbat194/bybe-studio- repository-ийн main салбартай холбогдсон.
+- AI Studio GitHub sync самбарт "Changes in Google AI Studio are ready to be pushed" ба "40 changed files" байна.
+- Эдгээр 40 файл AI Studio дотор өөрчлөгдсөн, GitHub руу push хийгдээгүй. Устгах, reset хийх, blindly overwrite хийхийг ХОРИГЛОНО.
+- Нөгөө талд ChatGPT GitHub main-д Монгол React интерфэйс, QA, OCR backend, optional Live Voice, тестийн код commit хийсэн.
+- GitHub дээр main-ийн хамгаалалтын нөөц салбар: backup/pre-aistudio-sync-2026-11-15
+- Өмнөх enkhbat194/bybe-studio бол өөр repo. Хөгжүүлэх шинэ repo ганцхан enkhbat194/bybe-studio-.
 
-ЭХЛЭЭД: Google AI Studio Build → Settings → GitHub → Pull changes from GitHub (эсвэл Build → Add files (+) → Import from GitHub) ашиглан ЭНЭ repository-ийн хамгийн сүүлийн кодыг ав. Одоогийн AI Studio апп өөр repository-тай холбогдсон бол эхлээд ZIP backup хийгээд зөв repository-г импортол. Шинэ repository үүсгэхгүй.
+## Чиний үүрэг
+Эхлээд 40 файлыг GitHub-ийн main дахь кодтой харьцуулан АЮУЛГҮЙ НЭГТГЭХ. Зүгээр л шинээр rewrite хийх, 40 файлыг хаях, GitHub дахь Монгол кодыг дарах, force push хийхгүй.
 
-ЗОРИЛГО: Чех 800-ийн урт видеог боловсруулах Монгол UI: эх видео сонгох → Чех үг, өгүүлбэрийн OCR → Чех/Англи ASR → 4 Чех клипийн start/end санал → хүн сонсож шалгах/засах → revision хадгалах → 6 QA шалгалт → app-ready экспорт.
+## 1-р шат: аудит ба backup
+1. AI Studio дахь одоогийн src/App.tsx, UI components, index.css, server.ts, package.json болон бүх 40 modified/added файлыг шалга. Бодит агуулгаар нь боломжуудыг тодорхойл.
+2. GitHub main-тай дараах файлуудыг тулга: src/App.tsx, src/styles.css, src/i18n/mn.ts, src/lib/clipRules.ts, src/lib/clipRules.test.ts, server.ts, server/liveVoice.ts, package.json, index.html, metadata.json, tsconfig.json, vite.config.ts, README.md, .github/workflows/ci.yml.
+3. Тулгалтын хүснэгт: файл, AI Studio-ийн сайн код, GitHub-ийн сайн код, зөрчил, нэгтгэх шийдэл.
+4. AI Studio-ийн 40 файлыг Download App (ZIP) хэлбэрээр эхлээд нөөцлөх шаардлагатай. Үүнийг автоматаар хийх эрхгүй бол хэрэглэгчид ZIP татуулах алхмыг үзүүл.
+5. GitHub хоёр чиглэлийн sync-ийг ашигла. Зөрчил гарвал Resolve conflicts диалог доторх side-by-side diff-ээр тус бүрийг шийд. Нэг талыг бүхэлд нь сонгохгүй.
+6. Одоохондоо GitHub руу PUSH БҮҮ ХИЙ. Audit report ба build/test-ийг эхлээд үзүүл.
 
-16 ШААРДЛАГА
-1. Одоо байгаа React/TypeScript/Express кодын архитектурыг хадгал; бүтнээр нь дахин rewrite бүү хий.
-2. Хэрэглэгчид харагдах бүх нэршил Монгол кирилл. Нэгдсэн src/i18n/mn.ts dictionary ашигла.
-3. Чех үг, өгүүлбэрийн эх текстийн č, ř, š, ž, ě, ů тэмдэгтийг өөрчилж болохгүй; Монголчилж орчуулахгүй.
-4. Үндсэн цэс: Хяналтын самбар, Эх видео, Аудионы зааг, Чанарын шалгалт, Экспорт, Шууд дуут яриа (ирээдүй).
-5. Ерөнхий AI Chat, Google Maps, TTS, олон хэлний subtitle зэрэг QA-д хамаарахгүй үйлчилгээг буцаан үндсэн дэлгэцэд нэмэхгүй.
-6. LIVE VOICE-ИЙГ УСТГАЖ БОЛОХГҮЙ. server/liveVoice.ts код хадгал; BYBE_ENABLE_LIVE_VOICE=false default; тусдаа ирээдүйн хэсэг.
-7. Дэлгэцийн OCR үе шат = ярианы эхлэл/төгсгөлийн үнэн зөв хугацаа биш.
-8. OCR/ASR/VAD/forced alignment-ийн санал бүр REVIEW_REQUIRED; хуурамч confidence:0.95 болон тогтмол 1.2 секундээс багагүй хугацаа ашиглахгүй.
-9. Англи аудио экспортлохгүй. 4 role: word_normal, word_slow, sentence_normal, sentence_slow.
-10. Нэг role дотор удаан үеэр хэлсэн үгийг олон таслахгүй; эхний ба сүүлийн авиаг хадгал.
-11. Start/end өөрчлөгдвөл өмнөх QA баталгаа reset; 6 шалгалтыг дахин хийнэ.
-12. Эх видео/хуучин WAV overwrite хийхгүй; шинэ revision ID, хадгалсан WAV-ийн SHA-256 хэш, эх source ID тусдаа бүртгэл.
-13. APP_READY зөвхөн агуулга, аудио, хадгалсан revision, QA бүгд баталгаажсаны дараа.
-14. 6 цагийн видеог base64 JSON-д нэг дор илгээхгүй; chunk upload/streaming, async worker, progress, cancel, resume архитектур хэрэгтэй.
-15. GEMINI_API_KEY зөвхөн серверт. PUBLIC GitHub-д видео, WAV, хэрэглэгчийн өгөгдөл, .env огт push хийхгүй.
-16. Build/Check/Test-ийг ажиллуулж шалгаад GitHub-д синхрончил. Conflict гарвал diff-г хүнээр шийдүүл.
+## 2-р шат: Монгол интерфэйс
+- Бүх меню, товч, field, tooltip, modal, toast, warning, loading, error, empty state, accessibility label Монгол кирилл байна.
+- Орчуулгын нэгдсэн эх сурвалж: src/i18n/mn.ts.
+- Англи техникийн нэр хэрэгтэй бол Монгол тайлбартай: Waveform (дууны долгион), Revision (засварын хувилбар), QA (чанарын баталгаажуулалт).
+- Чех үг, өгүүлбэр, диакритикийг эх хувилбараар хадгал: č, ř, š, ž, ě, ů, á, é, í. Эх Чех текстийг Монгол болгохгүй.
+- Desktop audio QA workstation хамгийн чухал, iPhone responsive UI нэмэлт.
 
-ЭХНИЙ ГҮЙЦЭТГЭХ АЖИЛ
-A. Одоо байгаа Монгол UI-ийн бүх товчлуур, гарчиг, алдаа, статус, mobile харагдацыг шалгаж дуусга.
-B. Source part, global word no, clip role, OCR frame time, audio start/end бүгд ялгаатай model-той болго.
-C. WaveSurfer regions/zoom болон non-destructive FFmpeg revision pipeline-д чиглэсэн дараагийн алхмыг implementation-д оруулах.
-D. Бодит видеоныхоо frame OCR болон аудионы time-ийг тулгахгүйгээр автоматаар APPROVED болгохгүй.
-E. Czech diacritics, QA reset, invalid boundaries, import/export roundtrip, Live Voice off-by-default тестүүдийг нэм.
-F. Google AI Studio Preview-д ажиллуулж шалга; өөрчлөлтөө зөвхөн enkhbat194/bybe-studio- repository-ийн main салбар руу Push changes хий.
+## 3-р шат: хадгалах ба тусгаарлах функцүүд
+Үндсэн workflow: эх видео → OCR дэлгэцийн бичвэр → ASR аудио яриа → Чех/Англи ялгах → 4 Чех аудионы start/end санал → waveform редактор → human QA → revision → app export.
+Заавал үлдээх: video playback, OCR, transcription, waveform/timeline, zoom, fine trim, QA, экспорт, чухал сайн UI компонентууд.
+Live Voice-ийг УСТГАХГҮЙ. AI Studio-ийн бүрэн Live Voice implementation-ийг preserve хийж, GitHub дахь server/liveVoice.ts-тай нэгтгэ. Энэ нь ирээдүйд ашиглах тусдаа модуль бөгөөд default BYBE_ENABLE_LIVE_VOICE=false.
+Ерөнхий AI Chat, Google Maps, тусдаа TTS, ерөнхий subtitle service зэрэг үндсэн QA-д хэрэггүй зүйлсийг үндсэн цэснээс хас. Dependency байвал module-ийг устгахаас өмнө нөлөөг шалга.
 
-GITHUB SYNC
-ChatGPT энэ repository-д commit хийсний дараа AI Studio GitHub табаас Pull changes авна. AI Studio-ийн засварыг Push changes-ээр ижил repo-д буцаана. Автоматаар бодит цагт шинэчлэгдэнэ гэж бүү тооц. Өмнө нь AI Studio workspace-д хадгалагдсан боловч GitHub-д push хийгээгүй код байгаа бол эхлээд ZIP backup ав.
+## 4-р шат: клип ба QA дүрэм
+- Нэг Чех үгт 4 role: word_normal, word_slow, sentence_normal, sentence_slow. Англи audio хасагдана.
+- Дэлгэцийн текстийн харагдах хугацаа нь ярианы start/end биш; OCR + ASR + VAD + context-ийг тулгана.
+- Хуурамч confidence 0.95/0.96, start/end-ийг хүчээр 1.2 sec болгохыг хориглоно.
+- Үеэр уншсан бүтэн үгийг тус тусад нь таслахгүй. Эхний сул авиа, сүүлийн авиа бүтэн.
+- №61 knír: эхний k, сүүлийн r; №94 zlatá: Англи Gold-ийг Чех аудио гэж хадгалахгүй; №95 růžová: аудио ба Чех текстийг тулгах.
+- QA 6 checks: start_heard, end_heard, whole_heard, language_correct, text_correct, role_correct.
+- Start/end/text/role засагдсан тохиолдол бүрт QA баталгааг reset хийх.
+- Эх видео, хуучин WAV дарж устгахгүй. Revision ID, SHA-256, source file ID, start/end, file path бүртгэнэ.
+- APP_READY зөвхөн бодит WAV хадгалсан, зөв Чех агуулгатай, QA баталгаажсан үед.
+- 6 цагийн видеог base64 JSON-д нэг дор илгээхгүй; streaming/chunking, resume/retry/cancel, task progress төлөвлөнө.
+- Server-only API key; .env, media/WAV/MP3/MKV, хувийн JSON-ийг public GitHub руу бүү push хий.
+
+## 5-р шат: тест ба аюулгүй sync
+1. npm run check, npm run test, npm run build амжилттай.
+2. Чех Unicode/filename; 4 role; буруу хугацаа; QA reset; JSON import/export; Live Voice default OFF; server secrets; responsive UI тест.
+3. Зөвхөн хийсэн бодит функцийг DONE гэж бич; waveform editor, FFmpeg actual WAV extraction, audio-to-text alignment зэрэг байхгүй зүйлсийг бэлэн гэж худал мэдэгдэхгүй.
+4. Аудитын тайланг Монгол хэлээр гарга: 40 файлын ялгаа, хадгалсан боломж, хассан зүйл, тестийн үр дүн, үлдсэн ажил, зөрчил.
+5. Хэрэглэгч diff/тайланг хараад зөвшөөрсний дараа л Push changes to GitHub. Зөрчилгүй үед л main-ийг update хийнэ. Force push эсвэл overwrite бүү хий.
+6. Бүх өөрчлөлт ганц repo: enkhbat194/bybe-studio-. GitHub дээр ChatGPT шинэ commit хийвэл AI Studio GitHub хэсгээс Pull changes хийж авах ёстой; realtime auto-sync гэж үзэхгүй.
