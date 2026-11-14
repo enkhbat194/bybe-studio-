@@ -6,6 +6,8 @@ import { effectiveRole, roleLabel, sameScreenText, styleRuleFromBlock, styleSign
 import { useMediaEngine } from './useMediaEngine';
 import { useBackgroundScan } from './useBackgroundScan';
 import { useBackgroundAsr, type AsrCandidate } from './useBackgroundAsr';
+import { useVisualAudio } from './useVisualAudio';
+import type { AudioSuggestion } from './lib/autoAlign';
 import ClipWaveEditor from './ClipWaveEditor';
 import './StudioWorkspace.css';
 import './StudioWorkspaceRefine.css';
@@ -20,6 +22,7 @@ const emptyQa=():Record<QAKey,boolean>=>Object.fromEntries(Object.keys(qaItems).
 interface Segment {
  id:string;sourceKey:string;text:string;kind:ClipKind;start:number;end:number;
  revisionId?:string;checks?:Record<QAKey,boolean>;matchStatus?:'AUTO_SUGGESTED';
+ origin?:'VISUAL_AUDIO_ESTIMATE'|'LOCAL_ASR';
  frameSec:number|null;ocrId:string|null;styleSignature:string|null;
  qa:'REVIEW_REQUIRED'|'MANUALLY_VERIFIED';updatedAt:string;
 }
@@ -92,6 +95,7 @@ export default function StudioWorkspace(){
  const lastActive=useRef<string|null>(null);
  const autoImportKey=useRef('');
  const autoOcrSource=useRef('');
+ const autoAsrSource=useRef('');
  const parts=useMemo(()=>planParts(duration,5,2),[duration]);
  const part=parts[partIndex]??{index:1,coreStart:0,coreEnd:Math.max(duration,1),analysisStart:0,analysisEnd:Math.max(duration,1)};
  const active=segments.find(s=>current>=s.start&&current<s.end)??null;
@@ -180,6 +184,7 @@ export default function StudioWorkspace(){
   const key=[f.name,f.size,f.lastModified].join(':');
   autoImportKey.current='';
   autoOcrSource.current='';
+  autoAsrSource.current='';
   setFile(f);setSourceKey(key);setSrc(URL.createObjectURL(f));setDuration(0);
   setStatus('Видео нээгдлээ. BYBE файлыг локал хөдөлгүүрт бэлтгээд OCR-ийг автоматаар эхлүүлнэ. Том файлд SSD зай шаардлагатай.');
  }
@@ -383,6 +388,30 @@ export default function StudioWorkspace(){
   });
  },[]);
  const scan=useBackgroundScan(media.sourceId,mergeFrames);
+ const addAutoAudio=useCallback((items:AudioSuggestion[])=>{
+  setSegments(old=>{
+   const merged=old.slice();
+   let changed=false;
+   for(const suggestion of items){
+    // Never overwrite a manually edited or ASR-based audio segment with visual estimates.
+    if(merged.some(c=>Math.abs(c.start-suggestion.start)<.45&&Math.abs(c.end-suggestion.end)<.45))continue;
+    if(merged.some(c=>c.origin!=='VISUAL_AUDIO_ESTIMATE'&&
+      Math.max(0,Math.min(c.end,suggestion.end)-Math.max(c.start,suggestion.start))>
+      .60*Math.min(c.end-c.start,suggestion.end-suggestion.start)))continue;
+    // Avoid unstable duplicate proposals while OCR frame batches arrive.
+    if(merged.some(c=>c.origin==='VISUAL_AUDIO_ESTIMATE'&&
+      Math.abs(c.start-suggestion.start)<.7))continue;
+    merged.push({id:crypto.randomUUID(),sourceKey,text:suggestion.text,
+      start:suggestion.start,end:suggestion.end,kind:'unknown',
+      frameSec:suggestion.frameSec,ocrId:suggestion.ocrId,styleSignature:null,
+      qa:'REVIEW_REQUIRED',origin:'VISUAL_AUDIO_ESTIMATE',matchStatus:'AUTO_SUGGESTED',
+      updatedAt:new Date().toISOString()});
+    changed=true;
+   }
+   return changed?merged.sort((a,b)=>a.start-b.start):old;
+  });
+ },[sourceKey]);
+ const visualAudio=useVisualAudio(media.sourceId,media.sourceDuration||duration,frames,addAutoAudio);
  // Opening a video is sufficient to begin preparing the local FFmpeg data.
  // Refs prevent duplicate long-running imports across React rerenders.
  useEffect(()=>{
@@ -401,18 +430,32 @@ export default function StudioWorkspace(){
  },[media.sourceId,scan.job,scan.busy,scan.start]);
  const receiveAsr=useCallback((items:AsrCandidate[])=>{
   setSegments(old=>{
-   const known=old.slice();
+   let known=old.slice(),changed=false;
    for(const entry of items){
     if(typeof entry.text!=='string'||!Number.isFinite(entry.start)||!Number.isFinite(entry.end)||entry.end<=entry.start)continue;
-    if(known.some(s=>Math.abs(s.start-entry.start)<.4&&Math.abs(s.end-entry.end)<.4))continue;
+    if(known.some(s=>s.origin!=='VISUAL_AUDIO_ESTIMATE'&&Math.abs(s.start-entry.start)<.4&&Math.abs(s.end-entry.end)<.4))continue;
+    // A local speech-recognition timestamp supersedes an estimated waveform slot,
+    // but NEVER removes manual edits, WAV revisions or verified records.
+    known=known.filter(c=>c.origin!=='VISUAL_AUDIO_ESTIMATE'||c.revisionId||
+       Math.max(0,Math.min(c.end,entry.end)-Math.max(c.start,entry.start))<
+       .45*Math.min(c.end-c.start,entry.end-entry.start));
     known.push({id:crypto.randomUUID(),sourceKey,text:entry.text,kind:'unknown',
       start:n3(entry.start),end:n3(entry.end),frameSec:null,ocrId:null,styleSignature:null,
-      qa:'REVIEW_REQUIRED',updatedAt:new Date().toISOString()});
+      qa:'REVIEW_REQUIRED',origin:'LOCAL_ASR',updatedAt:new Date().toISOString()});
+    changed=true;
    }
-   return known.sort((a,b)=>a.start-b.start);
+   return changed?known.sort((a,b)=>a.start-b.start):old;
   });
  },[sourceKey]);
  const backgroundAsr=useBackgroundAsr(media.sourceId,receiveAsr);
+ // If free faster-whisper is installed, source import launches ASR automatically.
+ // Without it, the visual+audio waveform proposal still runs and is clearly unverified.
+ useEffect(()=>{
+  if(!media.sourceId||capabilities?.fasterWhisper!==true||backgroundAsr.job||backgroundAsr.busy)return;
+  if(autoAsrSource.current===media.sourceId)return;
+  autoAsrSource.current=media.sourceId;
+  void backgroundAsr.start();
+ },[media.sourceId,capabilities?.fasterWhisper,backgroundAsr.job,backgroundAsr.busy,backgroundAsr.start]);
  useEffect(()=>{if(!duration && media.sourceDuration>0)setDuration(media.sourceDuration);},[duration,media.sourceDuration]);
  const pct=(sec:number)=>100*(sec-startOfView)/Math.max(.001,endOfView-startOfView);
  const soundBars=useMemo(()=>media.peaks.map((amplitude,i)=>(
@@ -527,7 +570,7 @@ export default function StudioWorkspace(){
      </div>:
       rows.map(s=><div key={s.id} ref={r=>{rowRefs.current[s.id]=r;}} className={'bybe-row '+(activeId===s.id?'is-current ':'')+(selectedId===s.id?'is-selected':'')}>
        <button className="bybe-row-text" onClick={()=>{setSelectedId(s.id);const v=video.current;if(v){v.currentTime=s.start;v.pause();}}} title="Видеог энэ хэсэгт очуулах">
-        <span>{s.text}</span><small>{time(s.start)}–{time(s.end)} · {kindNames[s.kind]} · {s.qa==='MANUALLY_VERIFIED'?'✓ QA баталсан':s.matchStatus==='AUTO_SUGGESTED'?'OCR таарсан (шалгаагүй)':'QA шалгах'}</small>
+        <span>{s.text}</span><small>{time(s.start)}–{time(s.end)} · {kindNames[s.kind]} · {s.qa==='MANUALLY_VERIFIED'?'✓ QA баталсан':s.origin==='VISUAL_AUDIO_ESTIMATE'?'OCR + долгионы санал · зааг шалгах':s.origin==='LOCAL_ASR'?'Whisper танилт · шалгах':s.matchStatus==='AUTO_SUGGESTED'?'OCR таарсан · шалгах':'QA шалгах'}</small>
        </button>
        <div className="bybe-row-actions">
         <button title="Сонсох" aria-label={s.text+' сонсох'} onClick={()=>play(s,false)}><Play size={15}/></button>
