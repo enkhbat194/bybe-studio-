@@ -4,6 +4,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
+import { spawnSync } from 'node:child_process';
 import { registerTypographyRoutes } from './server/ocrTypography';
 import { registerMediaRoutes } from './server/mediaLibrary';
 import { registerScanRoutes, recoverScanJobs } from './server/backgroundScan';
@@ -33,6 +34,23 @@ registerMediaRoutes(app);
 registerScanRoutes(app);
 registerLocalAsrRoutes(app);
 registerBackgroundAsr(app);
+function systemCheck(cmd:string,args:string[]):boolean {
+ try {
+  const result=spawnSync(cmd,args,{encoding:'utf8',timeout:3500,windowsHide:true,stdio:'ignore'});
+  return !result.error && result.status===0;
+ }catch{return false;}
+}
+app.get('/api/system/capabilities',(_req,res)=>{
+ const ffmpeg=systemCheck('ffmpeg',['-version']);
+ const ffprobe=systemCheck('ffprobe',['-version']);
+ const windows=process.platform==='win32';
+ const pythonCommand=process.env.BYBE_PYTHON|| (windows?'py':'python3');
+ const pythonArgs=windows&&pythonCommand==='py'?['-3.11','--version']:['--version'];
+ const python=systemCheck(pythonCommand,pythonArgs);
+ res.json({ffmpeg,ffprobe,python,
+  ocr:'tesseract-local',asr:'optional-faster-whisper',
+  warning:!ffmpeg||!ffprobe?'FFmpeg/FFprobe програм Windows PATH дотор олдсонгүй. Аудио боловсруулахгүй.':null});
+});
 app.get('/api/health',(_req,res)=>res.json({ok:true,hasApiKey:client()!==null,locale:'mn',
   liveVoiceEnabled:process.env.BYBE_ENABLE_LIVE_VOICE==='true',
   ocrEngine:process.env.BYBE_OCR_ENGINE==='gemini'?'gemini-opt-in':'tesseract-local'}));
