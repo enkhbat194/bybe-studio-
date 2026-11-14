@@ -262,8 +262,8 @@ export default function StudioWorkspace(){
   const rect=el.getBoundingClientRect();
   const fraction=Math.min(1,Math.max(0,(clientX-rect.left)/rect.width));
   const span=(part.coreEnd-part.coreStart)/zoom;
-  const offset=Math.max(0,Math.min(part.coreEnd-part.coreStart-span,current-(part.coreStart+span/2)));
-  return n3(part.coreStart+offset+fraction*span);
+  // Match the EXACT rendered viewport, including independent mouse panning.
+  return n3(startOfView+fraction*span);
  }
  function beginDrag(e:React.PointerEvent<HTMLDivElement>){
   if(!duration)return;
@@ -393,6 +393,28 @@ export default function StudioWorkspace(){
  const span=(part.coreEnd-part.coreStart)/zoom;
  const startOfView=part.coreStart+Math.max(0,Math.min(part.coreEnd-part.coreStart-span,viewAnchor-(part.coreStart+span/2)));
  const endOfView=startOfView+span;
+ // React wheel handlers can be passive; bind a native non-passive listener so
+ // wheel zoom does not scroll the whole page on Chrome/Edge.
+ useEffect(()=>{
+  const track=pointerBox.current;if(!track)return;
+  const handler=(e:WheelEvent)=>{
+   e.preventDefault();
+   if(e.shiftKey){
+    setViewAnchor(a=>Math.max(part.coreStart,Math.min(part.coreEnd,
+     a+Math.sign(e.deltaY)*span*.22)));
+    return;
+   }
+   const rect=track.getBoundingClientRect();
+   const ratio=Math.max(0,Math.min(1,(e.clientX-rect.left)/Math.max(1,rect.width)));
+   const target=startOfView+span*ratio;
+   const newZoom=Math.max(1,Math.min(64,zoom*(e.deltaY>0?1/1.4:1.4)));
+   const nextSpan=(part.coreEnd-part.coreStart)/newZoom;
+   setViewAnchor(target+(.5-ratio)*nextSpan);
+   setZoom(newZoom);
+  };
+  track.addEventListener('wheel',handler,{passive:false});
+  return()=>track.removeEventListener('wheel',handler);
+ },[zoom,span,startOfView,part.coreStart,part.coreEnd]);
  const media=useMediaEngine(file,startOfView,endOfView);
  const mergeFrames=useCallback((newFrames:FrameResult[])=>{
   setFrames(old=>{
@@ -662,19 +684,6 @@ export default function StudioWorkspace(){
     <button disabled={partIndex>=parts.length-1} onClick={()=>{setPartIndex(x=>x+1);if(video.current)video.current.currentTime=parts[partIndex+1]?.coreStart??0;}}><ChevronRight size={16}/></button>
    </div>
    <div className="bybe-track" ref={pointerBox}
-    onWheel={e=>{
-      e.preventDefault();
-      if(e.shiftKey){
-       setViewAnchor(a=>Math.max(part.coreStart,Math.min(part.coreEnd,a+Math.sign(e.deltaY)*span*.22)));
-      }else{
-       const rect=e.currentTarget.getBoundingClientRect();
-       const ratio=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
-       const target=startOfView+span*ratio;
-       const newZoom=Math.max(1,Math.min(64,zoom*(e.deltaY>0?1/1.4:1.4)));
-       const nextSpan=(part.coreEnd-part.coreStart)/newZoom;
-       setViewAnchor(target+(.5-ratio)*nextSpan);setZoom(newZoom);
-      }
-    }}
     onPointerDown={beginDrag} onPointerMove={drag} onPointerUp={endDrag}>
     <div className="bybe-track-grid"/>
     {soundBars.length>0&&<div className="bybe-wave-peaks">{soundBars}</div>}
