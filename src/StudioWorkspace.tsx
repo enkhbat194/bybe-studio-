@@ -178,6 +178,9 @@ export default function StudioWorkspace(){
  }
  async function verifyEditing(){
   if(!editing||!media.sourceId||!editing.revisionId)return;
+  if(editDraft.text.trim()!==editing.text||Number(editDraft.start)!==editing.start||Number(editDraft.end)!==editing.end||editDraft.kind!==editing.kind){
+   setStatus('Энэ засвар хараахан хадгалагдаагүй. Эхлээд хадгалаад шинэ WAV үүсгэнэ үү.');return;
+  }
   if(!Object.keys(qaItems).every(k=>qaChecks[k as QAKey])){setStatus('6 QA шалгалт бүгдийг батална уу.');return;}
   try{
    const response=await fetch('/api/media/'+media.sourceId+'/revisions/'+editing.revisionId+'/verify',{
