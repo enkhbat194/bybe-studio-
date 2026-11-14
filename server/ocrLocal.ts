@@ -1,4 +1,4 @@
-import { createWorker, type Worker } from 'tesseract.js';
+import { createWorker, PSM, type Worker } from 'tesseract.js';
 import type { OcrBlock } from '../src/lib/typography';
 
 let workerPromise: Promise<Worker> | null = null;
@@ -6,7 +6,12 @@ let queue: Promise<void> = Promise.resolve();
 
 function worker(): Promise<Worker> {
   if (!workerPromise) {
-    workerPromise = createWorker(['ces', 'eng']).catch(err => {
+    workerPromise = createWorker(['ces', 'eng']).then(async instance => {
+      // Vocabulary slides have short scattered text over a presenter. Default PSM 3
+      // often reads only the watermark and misses both the Czech word and translation.
+      await instance.setParameters({tessedit_pageseg_mode: PSM.SPARSE_TEXT});
+      return instance;
+    }).catch(err => {
       workerPromise = null; // allow retry if language data download fails
       throw err;
     });
