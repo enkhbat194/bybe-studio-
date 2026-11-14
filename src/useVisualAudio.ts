@@ -7,9 +7,10 @@ import { looksLikeTitle, proposeVisualAudio, type AudioSuggestion } from './lib/
 export function useVisualAudio(sourceId:string,duration:number,frames:FrameResult[],
  onSuggestions:(newItems:AudioSuggestion[])=>void){
  const [partsPeaks,setPartsPeaks]=useState<Record<number,number[]>>({});
- const fetching=useRef(new Set<number>()),handler=useRef(onSuggestions);
+ const fetching=useRef(new Set<number>()),handler=useRef(onSuggestions),activeSource=useRef('');
  handler.current=onSuggestions;
  useEffect(()=>{
+  activeSource.current=sourceId;
   fetching.current.clear();setPartsPeaks({});
  },[sourceId]);
  useEffect(()=>{
@@ -27,15 +28,15 @@ export function useVisualAudio(sourceId:string,duration:number,frames:FrameResul
    void fetch(url).then(async resp=>{
     const data=await resp.json().catch(()=>({}));
     if(!resp.ok)throw Error(data.error||'Waveform peaks унших алдаа');
-    if(Array.isArray(data.peaks)&&data.peaks.length>=24){
+    if(activeSource.current===sourceId && Array.isArray(data.peaks)&&data.peaks.length>=24){
      setPartsPeaks(old=>({...old,[i]:data.peaks}));
     }
    }).catch(e=>console.warn('Auto audio candidate:',e))
-    .finally(()=>fetching.current.delete(i));
+    .finally(()=>{if(activeSource.current===sourceId)fetching.current.delete(i);});
   }
  },[sourceId,duration,frames,partsPeaks]);
  useEffect(()=>{
-  if(!sourceId||!duration||!frames.length)return;
+  if(!sourceId||activeSource.current!==sourceId||!duration||!frames.length)return;
   const parts=planParts(duration,5,2);
   const proposed:AudioSuggestion[]=[];
   for(const [key,peaks] of Object.entries(partsPeaks)){
