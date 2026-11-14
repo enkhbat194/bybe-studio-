@@ -86,6 +86,8 @@ export default function StudioWorkspace(){
  const rowRefs=useRef<Record<string,HTMLDivElement|null>>({});
  const manualList=useRef(false);
  const lastActive=useRef<string|null>(null);
+ const autoImportKey=useRef('');
+ const autoOcrSource=useRef('');
  const parts=useMemo(()=>planParts(duration,5,2),[duration]);
  const part=parts[partIndex]??{index:1,coreStart:0,coreEnd:Math.max(duration,1),analysisStart:0,analysisEnd:Math.max(duration,1)};
  const active=segments.find(s=>current>=s.start&&current<s.end)??null;
@@ -153,7 +155,10 @@ export default function StudioWorkspace(){
     setStatus('Аудио/видео файл сонгоно уу.');return;
   }
   const key=[f.name,f.size,f.lastModified].join(':');
-  setFile(f);setSourceKey(key);setSrc(URL.createObjectURL(f));setDuration(0);setStatus('Файл нээгдлээ. Хөтөч MKV-ийн зарим кодекийг дэмжихгүй байж болно.');
+  autoImportKey.current='';
+  autoOcrSource.current='';
+  setFile(f);setSourceKey(key);setSrc(URL.createObjectURL(f));setDuration(0);
+  setStatus('Видео нээгдлээ. BYBE файлыг локал хөдөлгүүрт бэлтгээд OCR-ийг автоматаар эхлүүлнэ. Том файлд SSD зай шаардлагатай.');
  }
  function toPartAt(t:number){const ix=owningPart(parts,t);if(ix!==null)setPartIndex(ix-1);}
  function onTimeTick(){
@@ -351,6 +356,22 @@ export default function StudioWorkspace(){
   });
  },[]);
  const scan=useBackgroundScan(media.sourceId,mergeFrames);
+ // Opening a video is sufficient to begin preparing the local FFmpeg data.
+ // Refs prevent duplicate long-running imports across React rerenders.
+ useEffect(()=>{
+  if(!file||media.sourceId||media.working)return;
+  const key=[file.name,file.size,file.lastModified].join(':');
+  if(autoImportKey.current===key)return;
+  autoImportKey.current=key;
+  void media.upload();
+ },[file,media.sourceId,media.working,media.upload]);
+ // Do not require a second hidden click after media import: OCR is local/free.
+ useEffect(()=>{
+  if(!media.sourceId||scan.job||scan.busy)return;
+  if(autoOcrSource.current===media.sourceId)return;
+  autoOcrSource.current=media.sourceId;
+  void scan.start();
+ },[media.sourceId,scan.job,scan.busy,scan.start]);
  const receiveAsr=useCallback((items:AsrCandidate[])=>{
   setSegments(old=>{
    const known=old.slice();
@@ -421,11 +442,30 @@ export default function StudioWorkspace(){
     {media.lastRevision&&media.sourceId&&<a href={'/api/media/'+media.sourceId+'/revisions/'+media.lastRevision.id+'/download'} download>WAV татах: {media.lastRevision.filename}</a>}
    </div>}
   {status&&<div className="bybe-message" role="status">{status}<button aria-label="Мессеж хаах" onClick={()=>setStatus('')}><X size={15}/></button></div>}
+  {file&&<section className="bybe-process-strip" aria-label="Боловсруулалтын явц">
+   <div className="bybe-process-step done"><b>1</b><span>Видео нээгдсэн</span></div>
+   <div className={'bybe-process-step '+(media.sourceId?'done':media.working?'working':'pending')}>
+    <b>2</b><span>{media.sourceId?'Аудио бэлэн':media.working?'Файл холбож байна '+(media.progress??0)+'%':'Локал аудио бэлтгэх'}
+     {!media.sourceId&&!media.working&&<button onClick={()=>void media.upload()}>Дахин оролдох</button>}</span>
+   </div>
+   <div className={'bybe-process-step '+(scan.job?.status==='complete'?'done':scan.job?.status==='running'?'working':'pending')}>
+    <b>3</b><span>{scan.job?.status==='complete'?'OCR дууссан':scan.job?.status==='error'?'OCR алдаа — шалгах':
+     scan.job?'OCR: '+scan.job.nextPart+'/'+scan.job.totalParts+' хэсэг':'OCR эхлэхийг хүлээж байна'}
+    </span>
+   </div>
+   <div className="bybe-process-step pending"><b>4</b><span>Сонсож шалгах · {segments.length} аудио, {frames.length} кадр</span></div>
+  </section>}
   <main className="bybe-core">
    <section className="bybe-transcript panel">
     <header><h2>Текст · аудионы жагсаалт</h2><span>{rows.length} аудио · {unlinked.length} OCR · QA {reviewCount}</span></header>
     <div className="bybe-rows" ref={listRef} onWheel={()=>{manualList.current=true;window.setTimeout(()=>manualList.current=false,3000);}}>
-     {rows.length===0?<div className="bybe-empty">Энэ хэсэгт аудионы мөр алга. Доод хугацааны шугамаас хэсэг сонгоод, <b>T</b> дарж видеоны текст дээр товшино.</div>:
+     {rows.length===0&&unlinked.length===0?<div className="bybe-empty">
+      <strong>{!file?'Эх видеогоо нээнэ үү.':!media.sourceId?'Видео бэлтгэж байна…':scan.job?.status==='running'?'OCR кадруудыг уншиж байна…':'Энэ хэсгийн текст хараахан илрээгүй.'}</strong>
+      <p>{!file?'Эх видео нээгээд эхний OCR-ийг автоматаар эхлүүлнэ.':
+       !media.sourceId?'BYBE эх файлыг локал серверт хуулж, FFmpeg-ээр аудионы долгион бэлтгэнэ.':
+       scan.job?.status==='running'?'Эхний 5 минутын хэсэг боловсруулагдаж дуусахад текст энд нэмэгдэнэ.':
+       'Тухайн кадрыг сонгоод «Кадрын OCR» дараарай. Текст гармагц хугацааны шугамаас хэсэг сонгон T дарж холбоно.'}</p>
+     </div>:
       rows.map(s=><div key={s.id} ref={r=>{rowRefs.current[s.id]=r;}} className={'bybe-row '+(activeId===s.id?'is-current ':'')+(selectedId===s.id?'is-selected':'')}>
        <button className="bybe-row-text" onClick={()=>{setSelectedId(s.id);const v=video.current;if(v){v.currentTime=s.start;v.pause();}}} title="Видеог энэ хэсэгт очуулах">
         <span>{s.text}</span><small>{time(s.start)}–{time(s.end)} · {kindNames[s.kind]} · {s.qa==='MANUALLY_VERIFIED'?'✓ QA баталсан':'QA шалгах'}</small>
