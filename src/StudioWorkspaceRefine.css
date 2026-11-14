@@ -1,0 +1,151 @@
+/* BYBE Studio editorial workstation design — desktop-first, compact, neutral dark.
+   Imported after legacy CSS so these scoped declarations override global App styles. */
+.bybe-workstation{
+ --bp:#10151d;--bs:#171e29;--bb:#334253;
+ color:#e7edf4;background:#0c1118;
+ font-family:Inter,"Segoe UI",system-ui,sans-serif;
+ font-size:14px;
+ line-height:1.45;
+ padding:10px 14px 16px;
+ min-height:100vh;
+}
+.bybe-workstation .bybe-menu{
+ position:sticky;top:0;z-index:25;
+ min-height:52px;display:flex;flex-wrap:wrap;gap:7px;align-items:center;
+ background:#171e28;border:1px solid #334151;border-radius:10px;
+ padding:7px 12px;box-shadow:0 3px 10px #0003;
+}
+.bybe-workstation .bybe-logo{font-size:16px;letter-spacing:-.45px;margin-right:16px;color:#fff}
+.bybe-workstation .bybe-logo svg{color:#39c9b0}
+.bybe-workstation button{background:#222c39;color:#e3ecf5;
+ border-color:#415166;padding:7px 10px;min-height:34px;border-radius:7px;font-size:12px;
+ font-weight:500;transition:background-color .12s,border-color .12s}
+.bybe-workstation button:hover:not(:disabled){background:#2d4052;border-color:#6684a1}
+.bybe-workstation button.primary{background:#1b8a78;border-color:#2da992;color:white}
+.bybe-workstation button.primary:hover{background:#249985}
+.bybe-workstation button:disabled{opacity:.35}
+.bybe-short-status{font-size:12px;color:#9eb3c5;max-width:260px}
+.bybe-workstation nav.bybe-extra-tools{
+ display:flex!important;flex-direction:row!important;flex-wrap:wrap!important;
+ align-items:center!important;justify-content:flex-start!important;
+ gap:8px!important;padding:11px 12px!important;margin:7px 0 0;
+ max-height:200px!important;overflow-y:auto!important;overflow-x:visible!important;
+ background:#1c2632;border:1px solid #394b5f;box-shadow:0 10px 25px #0004;
+ border-radius:9px;z-index:24;position:relative;
+}
+.bybe-workstation nav.bybe-extra-tools button{flex:0 0 auto!important;width:auto!important;max-width:100%;font-size:12px}
+.bybe-statusline{
+ display:flex;align-items:center;justify-content:space-between;gap:14px;
+ background:#141c26;border:1px solid #293849;border-radius:8px;
+ margin-top:8px;padding:7px 11px;min-height:42px;
+}
+.bybe-statusline-main{min-width:0;display:flex;align-items:center;gap:9px;
+ overflow:hidden;white-space:nowrap;color:#adbfce;font-size:12px}
+.bybe-statusline-main strong{font-size:12px;max-width:240px;overflow:hidden;text-overflow:ellipsis;
+ color:#dce8f3;font-weight:600;white-space:nowrap}
+.bybe-status-indicator.ready{color:#3bcaa7;font-size:14px}
+.bybe-status-divider{color:#607286}
+.bybe-status-error{color:#ffc182;font-weight:700}
+.bybe-statusline-actions{display:flex;align-items:center;gap:7px;flex:none}
+.bybe-statusline-actions button{font-size:11px;min-height:29px;padding:4px 8px}
+.bybe-workstation button.bybe-rescan{border-color:#437b88;color:#a9f1e2}
+.bybe-diagnostics{position:relative}
+.bybe-diagnostics summary{
+ display:flex;align-items:center;cursor:pointer;white-space:nowrap;
+ font-size:12px;color:#b2cbda;padding:6px 7px;border:1px solid #3b5064;
+ border-radius:6px;background:#23303e;list-style:revert
+}
+.bybe-diagnostics[open] summary{border-color:#509b91}
+.bybe-diagnostic-list{
+ position:absolute;right:0;top:calc(100% + 8px);z-index:45;width:min(600px,90vw);
+ max-height:330px;overflow:auto;background:#18212d;border:1px solid #415970;
+ box-shadow:0 18px 40px #0009;border-radius:9px;padding:12px;
+ display:flex;flex-direction:column;gap:8px;color:#cbd9e7;font-size:12px;
+ white-space:normal;overflow-wrap:anywhere
+}
+.bybe-diagnostic-list>div{border-bottom:1px solid #344252;padding-bottom:7px}
+.bybe-diagnostic-list>div:last-child{border:0}
+.bybe-diagnostic-list strong{color:#e7f2ff}
+.bybe-diagnostic-list a{color:#79ddca;text-decoration:underline}
+.bybe-diagnostic-error{color:#ffd091}
+.bybe-alert{
+ display:flex;gap:5px;align-items:center;padding:8px 12px;margin-top:7px;
+ background:#3b2c1d;border:1px solid #85603b;color:#ffe0af;border-radius:7px;
+ font-size:12px;line-height:1.45
+}
+.bybe-alert strong{white-space:nowrap}
+.bybe-core{display:grid!important;grid-template-columns:minmax(310px,37%) minmax(440px,1fr)!important;
+ gap:9px!important;margin:9px 0!important;align-items:stretch}
+.bybe-workstation .panel{
+ padding:0!important;min-width:0!important;border:1px solid #344151;
+ border-radius:10px;background:#141c28;box-shadow:0 2px 9px #0002;
+}
+.bybe-workstation .panel>header{
+ min-height:45px;display:flex;align-items:center;justify-content:space-between;
+ gap:10px;padding:9px 14px;border-bottom:1px solid #2a394b
+}
+.bybe-workstation .panel h2{font-size:15px!important;font-weight:650!important;color:#edf5fb;letter-spacing:-.2px}
+.bybe-workstation .panel>header span{font-size:12px!important;color:#91a7bd}
+.bybe-transcript{min-height:390px;display:flex;flex-direction:column}
+.bybe-rows{padding:7px 8px;flex:1;max-height:clamp(350px,58vh,690px);overflow-y:auto}
+.bybe-empty{padding:20px!important;text-align:left;font-size:14px!important;color:#9eb5c6}
+.bybe-empty strong{font-size:15px!important}
+.bybe-empty p{margin-top:10px;font-size:13px!important}
+.bybe-row,.bybe-ocr-row{
+ border-radius:8px;border:1px solid #374759;background:#1a2531;
+ gap:5px;margin:4px 0;padding:5px 6px;
+}
+.bybe-row.is-current{background:#143c3b;border-color:#34c7ad}
+.bybe-row.is-selected{outline:1px solid #65b6db}
+.bybe-row-text span{font-size:14px!important;color:#f2f7ff}
+.bybe-row-text small{font-size:11px!important;line-height:1.4;color:#9aafc3}
+.bybe-row-actions button{padding:5px!important;min-width:31px;min-height:31px}
+.bybe-preview{min-width:0}
+.bybe-video-holder{padding:11px 11px 0;align-items:flex-start;min-height:0!important}
+.bybe-video-frame{width:100%;max-width:none;max-height:61vh;border-radius:5px;
+ border:1px solid #263345;background:#030609}
+.bybe-video-frame video{object-fit:contain}
+.bybe-preview-tools{padding:10px 12px 6px;gap:9px}
+.bybe-preview-tools>span{font-size:12px!important;color:#b8c9d7}
+.bybe-workstation .bybe-help{font-size:12px!important;color:#9cb0c3;line-height:1.5;
+ padding:4px 12px 10px;margin:0}
+.bybe-ocr-box{border-color:#30bea2}
+.bybe-ocr-box.armed{background:#edb54430;border-color:#edc45d}
+.bybe-ocr-box button.bybe-style-button{min-height:16px}
+.bybe-timeline{
+ position:sticky;bottom:6px;z-index:12;
+ margin-top:8px;border-radius:10px!important;
+ box-shadow:0 10px 28px #0009!important;
+ background:#111924!important;
+}
+.bybe-partnav{padding:4px 10px;gap:10px;justify-content:center}
+.bybe-partnav span{font-size:12px!important;color:#bfd1df}
+.bybe-track{height:95px;margin:4px 14px 0;border-color:#466076;border-radius:6px;background:#091521}
+.bybe-timeline-footer{font-size:12px!important;color:#acc5d7}
+.bybe-timeline .bybe-help{padding:2px 14px 8px}
+.bybe-wave-bar{opacity:.85!important;background:#3ccdaf!important}
+.bybe-clip-wave{background:#0d1b29}
+.bybe-workstation .bybe-modal{background:#1d2834}
+@media(max-width:900px){
+ .bybe-core{grid-template-columns:minmax(250px,36%) minmax(350px,1fr)!important}
+ .bybe-short-status{display:none}
+ .bybe-workstation .bybe-menu{gap:5px}
+}
+@media(max-width:730px){
+ .bybe-core{grid-template-columns:1fr!important}
+ .bybe-rows{max-height:360px}
+ .bybe-statusline{flex-wrap:wrap}
+ .bybe-statusline-main{max-width:100%}
+ .bybe-statusline-actions{margin-left:auto}
+ .bybe-timeline{position:relative;bottom:auto}
+ .bybe-video-frame{max-height:65vh}
+}
+@media(max-width:520px){
+ .bybe-workstation{padding:6px}
+ .bybe-statusline-main strong{max-width:125px}
+ .bybe-workstation .bybe-logo{font-size:14px;margin-right:4px}
+ .bybe-workstation .bybe-menu button{font-size:11px}
+ .bybe-workstation nav.bybe-extra-tools{max-height:270px!important}
+ .bybe-video-holder{padding:6px 6px 0}
+ .bybe-statusline{gap:6px}
+}
