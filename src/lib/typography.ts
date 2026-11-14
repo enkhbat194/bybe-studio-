@@ -60,13 +60,13 @@ export function sameScreenText(a:OcrBlock,b:OcrBlock):boolean {
 export function usefulVideoText(b:OcrBlock):boolean {
  const value=b.text.normalize('NFC').trim();
  if(value.length<2||value.length>250)return false;
- if(/(?:CzechClass101|https?:|www\\.|subscribe|^\\d+[,.]?\\d*$)/i.test(value))return false;
- const letters=(value.match(/[\\p{L}]/gu)||[]).length;
+ if(/(?:CzechClass101|https?:|www\.|subscribe|^\d+[,.]?\d*$)/i.test(value))return false;
+ const letters=(value.match(/[\p{L}]/gu)||[]).length;
  if(letters<2||letters/Math.max(1,value.length)<.48)return false;
  if(b.box.w<.026||b.box.h<.020)return false;
  const primary=b.box.h>=.039&&b.box.y<.73&&b.box.x<.82;
  const subtitle=b.box.y>=.62&&b.box.y<.96&&b.box.h>=.023&&
-   (value.length>=8||value.split(/\\s+/).length>=2);
+   (value.length>=8||value.split(/\s+/).length>=2);
  const upperLeft=b.box.x<.5&&b.box.y<.38&&b.box.h>=.027&&value.length>=3;
  return primary||subtitle||upperLeft;
 }
