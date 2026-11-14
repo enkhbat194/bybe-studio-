@@ -126,7 +126,7 @@ export default function StudioWorkspace(){
   }));
  },[frames,segments]);
  useEffect(()=>{
-  fetch('/api/health'.then(r=>r.json())
+  fetch('/api/health').then(r=>r.json())
    .then(v=>setOcrMode(v.ocrEngine==='gemini-opt-in'?'Gemini OCR (сонголт)':'Локал OCR · үнэгүй')).catch(()=>{});
   fetch('/api/system/capabilities').then(r=>r.json()).then(setCapabilities).catch(()=>{});
  },[]);
