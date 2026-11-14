@@ -4,6 +4,7 @@ import { planParts, owningPart } from './lib/parts';
 import { effectiveRole, roleLabel, sameScreenText, styleRuleFromBlock, styleSignature, validateBlock, type FrameResult, type OcrBlock, type StyleRule, type TextRole } from './lib/typography';
 import { useMediaEngine } from './useMediaEngine';
 import { useBackgroundScan } from './useBackgroundScan';
+import ClipWaveEditor from './ClipWaveEditor';
 import './StudioWorkspace.css';
 
 type ClipKind='word_normal'|'word_slow'|'sentence_normal'|'sentence_slow'|'english_word'|'english_sentence'|'unknown';
@@ -484,6 +485,10 @@ export default function StudioWorkspace(){
   {editing&&<div className="bybe-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setEditId(null);}}>
    <section className="bybe-modal" role="dialog" aria-modal="true" aria-label="Аудионы зааг засах">
     <header><h2>Аудионы хэсэг засах</h2><button onClick={()=>setEditId(null)}><X size={18}/></button></header>
+    <ClipWaveEditor sourceId={media.sourceId} sourceDuration={duration}
+     originalStart={editing.start} originalEnd={editing.end}
+     start={Number(editDraft.start)} end={Number(editDraft.end)}
+     onChange={(start,end)=>setEditDraft(d=>({...d,start:start.toFixed(3),end:end.toFixed(3)}))}/>
     <div className="bybe-edit-fields">
      <label>Бичвэр<input value={editDraft.text} onChange={e=>setEditDraft(v=>({...v,text:e.target.value}))}/></label>
      <label>Төрөл<select value={editDraft.kind} onChange={e=>setEditDraft(v=>({...v,kind:e.target.value as ClipKind}))}>{KINDS.map(k=><option key={k} value={k}>{kindNames[k]}</option>)}</select></label>
