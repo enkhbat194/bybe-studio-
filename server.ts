@@ -8,6 +8,7 @@ import { registerTypographyRoutes } from './server/ocrTypography';
 import { registerMediaRoutes } from './server/mediaLibrary';
 import { registerScanRoutes, recoverScanJobs } from './server/backgroundScan';
 import { registerLocalAsrRoutes } from './server/localAsr';
+import { registerBackgroundAsr, recoverAsrJobs } from './server/backgroundAsr';
 
 const app=express();
 const PORT=Number(process.env.PORT||3000);
@@ -31,6 +32,7 @@ registerTypographyRoutes(app,client);
 registerMediaRoutes(app);
 registerScanRoutes(app);
 registerLocalAsrRoutes(app);
+registerBackgroundAsr(app);
 app.get('/api/health',(_req,res)=>res.json({ok:true,hasApiKey:client()!==null,locale:'mn',
   liveVoiceEnabled:process.env.BYBE_ENABLE_LIVE_VOICE==='true',
   ocrEngine:process.env.BYBE_OCR_ENGINE==='gemini'?'gemini-opt-in':'tesseract-local'}));
@@ -92,6 +94,7 @@ app.post('/api/transcribe-clip',async(req,res)=>{
 
 async function main(){
   await recoverScanJobs();
+  await recoverAsrJobs();
   if(process.env.NODE_ENV!=='production'){
     const {createServer}=await import('vite');
     const vite=await createServer({server:{middlewareMode:true},appType:'spa'});
