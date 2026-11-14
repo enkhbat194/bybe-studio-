@@ -36,3 +36,16 @@ test('Tesseract.js v7 HEADERLESS TSV yields Czech word and English gloss',()=>{
  assert.equal(blocks[0].box.x,68/960);
  assert.equal(blocks[1].box.y,125/540);
 });
+
+test('OCR removes watermark, numeric counters and face noise but keeps valid Czech lesson',()=>{
+ const rows=[
+   '5\t1\t1\t1\t1\t1\t55\t64\t210\t52\t96\tčesnek',
+   '5\t1\t2\t1\t1\t1\t55\t133\t115\t43\t92\tgarlic',
+   '5\t1\t3\t1\t1\t1\t775\t10\t174\t20\t98\tCzechClass101.com',
+   '5\t1\t4\t1\t1\t1\t800\t100\t30\t43\t99\t14',
+   '5\t1\t5\t1\t1\t1\t500\t280\t24\t15\t90\tM',
+   '5\t1\t6\t1\t1\t1\t450\t320\t30\t15\t30\txx',
+ ].join('\n');
+ const result=blocksFromTsv(h+'\n'+rows,960,540,12);
+ assert.deepEqual(result.map(b=>b.text),['česnek','garlic']);
+});
