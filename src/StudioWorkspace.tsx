@@ -56,7 +56,7 @@ export default function StudioWorkspace(){
  const [styleRole,setStyleRole]=useState<TextRole>('unknown');
  const [loop,setLoop]=useState<string|null>(null);
  const [partIndex,setPartIndex]=useState(0);
- const [hasApiKey,setHasApiKey]=useState(false);
+ const [ocrMode,setOcrMode]=useState('Локал OCR');
  const [zoom,setZoom]=useState(1);
  const video=useRef<HTMLVideoElement|null>(null);
  const seekEnd=useRef<number|null>(null);
@@ -87,7 +87,7 @@ export default function StudioWorkspace(){
  },[frames,styleRules]);
  const unlinked=collected.filter(b=>!segments.some(s=>s.ocrId===b.id||s.text===b.text&&Math.abs((s.frameSec??-100)-b.frameSec)<10));
 
- useEffect(()=>{fetch('/api/health').then(r=>r.json()).then(v=>setHasApiKey(!!v.hasApiKey)).catch(()=>{});},[]);
+ useEffect(()=>{fetch('/api/health').then(r=>r.json()).then(v=>setOcrMode(v.ocrEngine==='gemini-opt-in'?'Gemini OCR (сонголт)':'Локал OCR · үнэгүй')).catch(()=>{});},[]);
  useEffect(()=>{return ()=>{if(src)URL.revokeObjectURL(src);};},[src]);
  useEffect(()=>{
   if(!sourceKey)return;
@@ -202,7 +202,7 @@ export default function StudioWorkspace(){
   setBusy(true);
   try {
    const resp=await fetch('/api/ocr-layout',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({imageBase64:canvas.toDataURL('image/jpeg',.87).split(',')[1],mimeType:'image/jpeg',frameSec})});
+    body:JSON.stringify({imageBase64:canvas.toDataURL('image/jpeg',.87).split(',')[1],mimeType:'image/jpeg',frameSec,imageWidth:canvas.width,imageHeight:canvas.height})});
    const data=await resp.json();
    if(!resp.ok)throw new Error(data.error||'OCR алдаа');
    const blocks=(Array.isArray(data.blocks)?data.blocks:[])
@@ -268,7 +268,7 @@ export default function StudioWorkspace(){
    <button onClick={()=>importPicker.current?.click()}><FileVideo size={17}/> Бүртгэл оруулах</button>
    <button onClick={exportJson}><Download size={17}/> Экспорт</button>
    <button onClick={()=>void captureFrame()} disabled={!src||busy}><ScanText size={17}/> {busy?'Уншиж байна…':'Кадрын OCR'}</button>
-   <span className="bybe-top-status">{file?.name??'Эх видео сонгоогүй'} · {hasApiKey?'AI бэлэн':'OCR түлхүүр шаардлагатай'}</span>
+   <span className="bybe-top-status">{file?.name??'Эх видео сонгоогүй'} · {ocrMode}</span>
   </header>
   {status&&<div className="bybe-message" role="status">{status}<button aria-label="Мессеж хаах" onClick={()=>setStatus('')}><X size={15}/></button></div>}
   <main className="bybe-core">
@@ -318,7 +318,7 @@ export default function StudioWorkspace(){
      <button className={textMode?'primary':''} onClick={()=>setTextMode(v=>!v)}>T · Текст холбох</button>
      <button onClick={()=>void captureFrame()} disabled={!src||busy}><ScanText size={15}/> Одоо харагдаж буй кадрыг таних</button>
     </div>
-    <p className="bybe-help">Эхний OCR-д төлбөртэй API ашиглагдаж болзошгүй. Текстийн хэв маягийн дүрэм зөвхөн энэ видео дээр хадгалагдана. Координат, ангилал нь AI-ийн санал — баталгаажуулалт биш.</p>
+    <p className="bybe-help">Үндсэн OCR компьютер дээр үнэгүй ажиллана. Анхны запускт Чех/Англи хэлний загвар татагдаж болно. Үсгийн өнгө/зузааны бодит танилт хараахан байхгүй. Координат ба текстийг шалгана.</p>
    </section>
   </main>
   <section className="bybe-timeline panel">
