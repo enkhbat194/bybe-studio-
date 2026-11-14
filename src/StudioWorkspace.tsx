@@ -83,9 +83,11 @@ export default function StudioWorkspace(){
  const [asrBusy,setAsrBusy]=useState(false);
  const [toolsOpen,setToolsOpen]=useState(false);
  const [zoom,setZoom]=useState(1);
+ const [viewAnchor,setViewAnchor]=useState(0);
  const video=useRef<HTMLVideoElement|null>(null);
  const seekEnd=useRef<number|null>(null);
  const dragStart=useRef<number|null>(null);
+ const panDrag=useRef<{x:number;anchor:number}|null>(null);
  const pointerBox=useRef<HTMLDivElement|null>(null);
  const filePicker=useRef<HTMLInputElement|null>(null);
  const importPicker=useRef<HTMLInputElement|null>(null);
@@ -142,7 +144,7 @@ export default function StudioWorkspace(){
   setSegments((data.segments||[]).filter(isSegment));
   setFrames(Array.isArray(data.frames)?data.frames.filter(x=>typeof x.frameSec==='number'&&Array.isArray(x.blocks)):[]);
   setStyleRules(Array.isArray(data.styleRules)?data.styleRules:[]);
-  setSelectedRange(null);setSelectedId(null);setPartIndex(0);setCurrent(0);setLoop(null);
+  setSelectedRange(null);setSelectedId(null);setPartIndex(0);setCurrent(0);setViewAnchor(0);setZoom(1);setLoop(null);
   setHydratedKey(sourceKey);
  },[sourceKey]);
  useEffect(()=>{
@@ -192,6 +194,7 @@ export default function StudioWorkspace(){
  function onTimeTick(){
   const v=video.current;if(!v)return;
   const t=v.currentTime;setCurrent(t);toPartAt(t);
+  if(t<startOfView||t>endOfView)setViewAnchor(t);
   if(seekEnd.current!==null&&t>=seekEnd.current){
    if(loop){const s=segments.find(x=>x.id===loop);if(s){v.currentTime=s.start;return;}}
    v.pause();seekEnd.current=null;
@@ -264,15 +267,29 @@ export default function StudioWorkspace(){
  }
  function beginDrag(e:React.PointerEvent<HTMLDivElement>){
   if(!duration)return;
+  if(e.shiftKey||e.button===1){
+   panDrag.current={x:e.clientX,anchor:viewAnchor};e.currentTarget.setPointerCapture(e.pointerId);return;
+  }
   e.currentTarget.setPointerCapture(e.pointerId);dragStart.current=posToTime(e.clientX);
   setSelectedRange({start:dragStart.current,end:dragStart.current+0.001});setLoop(null);
  }
  function drag(e:React.PointerEvent<HTMLDivElement>){
+  if(panDrag.current){
+   const pixels=pointerBox.current?.getBoundingClientRect().width||1;
+   const delta=(e.clientX-panDrag.current.x)/pixels*span;
+   setViewAnchor(Math.max(part.coreStart,Math.min(part.coreEnd,panDrag.current.anchor-delta)));
+   return;
+  }
   if(dragStart.current===null)return;
   const t=posToTime(e.clientX),lo=Math.min(t,dragStart.current),hi=Math.max(t,dragStart.current);
   setSelectedRange({start:lo,end:Math.max(hi,lo+0.001)});
  }
  function endDrag(e:React.PointerEvent<HTMLDivElement>){
+  if(panDrag.current){
+   panDrag.current=null;
+   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+   return;
+  }
   if(dragStart.current===null)return;
   const t=posToTime(e.clientX),start=Math.min(t,dragStart.current),end=Math.max(t,dragStart.current);
   dragStart.current=null;
@@ -374,7 +391,7 @@ export default function StudioWorkspace(){
   }catch(e){setStatus(e instanceof Error?e.message:'JSON импортын алдаа');}
  }
  const span=(part.coreEnd-part.coreStart)/zoom;
- const startOfView=part.coreStart+Math.max(0,Math.min(part.coreEnd-part.coreStart-span,current-(part.coreStart+span/2)));
+ const startOfView=part.coreStart+Math.max(0,Math.min(part.coreEnd-part.coreStart-span,viewAnchor-(part.coreStart+span/2)));
  const endOfView=startOfView+span;
  const media=useMediaEngine(file,startOfView,endOfView);
  const mergeFrames=useCallback((newFrames:FrameResult[])=>{
@@ -625,14 +642,39 @@ export default function StudioWorkspace(){
   </main>
   <section className="bybe-timeline panel">
    <header><h2>Аудионы хугацааны шугам</h2>
-    <div><button onClick={()=>setZoom(x=>Math.max(1,x/2))}>−</button><span> ×{zoom}</span><button onClick={()=>setZoom(x=>Math.min(8,x*2))}>＋</button></div>
+    <div><button onClick={()=>setZoom(x=>Math.max(1,x/1.6))}>−</button><span> ×{zoom.toFixed(1)}</span>
+    <button onClick={()=>setZoom(x=>Math.min(64,x*1.6))}>＋</button></div>
    </header>
+   <label className="bybe-source-overview">
+    <span>Бүтэн эх файл · {time(current)} / {time(duration)}</span>
+    <input type="range" min="0" max={duration||1} step=".1" value={Math.min(current,duration||1)}
+      onChange={e=>{
+       const t=Number(e.target.value);
+       if(video.current){video.current.pause();video.current.currentTime=t;}
+       setCurrent(t);setViewAnchor(t);toPartAt(t);
+      }}/>
+    <span>Файлын аль ч хугацаанд очих</span>
+   </label>
    <div className="bybe-partnav">
     <button disabled={partIndex===0} onClick={()=>{setPartIndex(x=>x-1);if(video.current)video.current.currentTime=parts[partIndex-1]?.coreStart??0;}}><ChevronLeft size={16}/></button>
     <span>Хэсэг {partIndex+1}/{parts.length||1} · {time(part.coreStart)}–{time(part.coreEnd)} · Эх файл өөрчлөгдөхгүй</span>
     <button disabled={partIndex>=parts.length-1} onClick={()=>{setPartIndex(x=>x+1);if(video.current)video.current.currentTime=parts[partIndex+1]?.coreStart??0;}}><ChevronRight size={16}/></button>
    </div>
-   <div className="bybe-track" ref={pointerBox} onPointerDown={beginDrag} onPointerMove={drag} onPointerUp={endDrag}>
+   <div className="bybe-track" ref={pointerBox}
+    onWheel={e=>{
+      e.preventDefault();
+      if(e.shiftKey){
+       setViewAnchor(a=>Math.max(part.coreStart,Math.min(part.coreEnd,a+Math.sign(e.deltaY)*span*.22)));
+      }else{
+       const rect=e.currentTarget.getBoundingClientRect();
+       const ratio=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+       const target=startOfView+span*ratio;
+       const newZoom=Math.max(1,Math.min(64,zoom*(e.deltaY>0?1/1.4:1.4)));
+       const nextSpan=(part.coreEnd-part.coreStart)/newZoom;
+       setViewAnchor(target+(.5-ratio)*nextSpan);setZoom(newZoom);
+      }
+    }}
+    onPointerDown={beginDrag} onPointerMove={drag} onPointerUp={endDrag}>
     <div className="bybe-track-grid"/>
     {soundBars.length>0&&<div className="bybe-wave-peaks">{soundBars}</div>}
     {segments.filter(s=>s.start<endOfView&&s.end>startOfView).map(s=><div className="bybe-track-segment" key={s.id}
@@ -643,7 +685,7 @@ export default function StudioWorkspace(){
    </div>
    <div className="bybe-timeline-footer">
     <span>{time(startOfView)}</span>
-    <span>{selectedRange?'Сонгосон: '+time(selectedRange.start)+' – '+time(selectedRange.end)+' · T → текст дээр товших':'Хулганаар чирж хугацаа сонгох · нэг товшилтоор гүйлгэх'}</span>
+    <span>{selectedRange?'Сонгосон: '+time(selectedRange.start)+' – '+time(selectedRange.end)+' · T → текст дээр товших':'Дугуй = томруулах · Shift+дугуй / Shift+чирэх = шилжих · чирэх = таслах'}</span>
     <span>{time(endOfView)}</span>
    </div>
    <p className="bybe-help">{media.sourceId?
