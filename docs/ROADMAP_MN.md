@@ -1,71 +1,62 @@
-# BYBE Studio — Ажлын дараалал ба баталгаажуулах шалгуур
-Огноо: 2026-11-15
-Repository: https://github.com/enkhbat194/bybe-studio-
-Хөгжүүлэлтийн PR: https://github.com/enkhbat194/bybe-studio-/pull/1 (DRAFT)
+# BYBE Studio — ажлын төлөвлөгөө ба шалгуур
+Огноо: 2026-11-15 · Үндсэн repo: https://github.com/enkhbat194/bybe-studio-
+Feature: feature/typography-ocr-workstation · Draft PR #1
 
-## Зорилго
-6 цагийн видео оруулахад эхний 5 минутын текст/аудионы саналууд гармагц хэрэглэгч шалгаж эхэлнэ. Үлдсэн хэсгүүдийг локал worker (арын процесс) өөрөө дарааллаар боловсруулна. Эх видео өөрчлөгдөхгүй, аудио/текстийг баталгаатай холбоно. Интерфэйс Монгол, нэг дэлгэцтэй.
+## 1. Нэг дэлгэцийн UI ба үндсэн редактор
+- [x] Зүүн жагсаалт: нэг мөр = нэг бодит аудио хэсэг, ▶/↻/✎/WAV; баруун дээд видео, доод waveform
+- [x] Видео явж буй секундийн мөр тодорно, мөр дээр дарахад видео тэр цагт очно
+- [x] Timeline mouse drag + T + OCR бичвэр дээр click → аудио/текстийн холбоос
+- [x] Төвийн popup waveform (хөх start, шар end)-ийг чирж засах, Enter хадгалах, QA reset
+- [x] 5 минутын виртуал part, хэсэг хооронд шилжилт
+- [ ] Хэрэглэгчийн компьютер дээр MKV/MP4 playback, бичвэр/аудионы бодит acceptance test
 
-## I шат — нэг дэлгэцийн интерактив редактор (код бичсэн, бодит Windows acceptance test шаардлагатай)
-- [x] Үг/өгүүлбэр/аудионы нэгтгэсэн мөрүүд; play/loop/edit
-- [x] Видео тоглож буй секундтэй холбогдсон мөрийг идэвхжүүлэх
-- [x] Доод талын хугацааны шугамд хулганаар start/end сонгох; T + OCR бичвэр = сегмент
-- [x] Төвийн засварын цонх, Enter хадгалалт, QA reset
-- [x] 5 минутын виртуал part, шилжилт, 2 сек overlap metadata
-- [x] JSON экспорт/импорт, нэг эх файлын нэр/хэмжээнд тулгах
-- [x] LocalStorage бүртгэл; GIF/медиа хадгалахгүй
-- [ ] Windows 11 + Chrome дээр хэрэглэгчийн эх видео дээр бүрэн QA тест
-- [ ] Жинхэнэ дууны долгион (peak waveform); одоо зөвхөн timeline байгаа
-- [ ] MKV-г автоматаар локал MP4 preview болгох
+## 2. Үнэгүй текст ба яриа таних
+- [x] Tesseract.js Чех+Англи OCR, координат, нэг видеоны style rule (Gemini API шаардлагагүй)
+- [x] Локал background OCR, кадр sample, 5 минутын queue, pause/resume/recovery
+- [x] Optional faster-whisper Python ASR, per-part/full-video background queue, текст/хугацааны санал
+- [x] ASR таньсан мөрийн бичвэрийг OCR сонгож засах UI
+- [ ] Чех/Англи яриа хооронд солигдох үед speaker/role-ийг найдвартай автоматаар ангилах
+- [ ] WhisperX Czech forced alignment болон Qwen3-ASR-ийг тусгай сонголтоор туршиж нэгтгэх
+- [ ] Текстийн font color, bold/regular яг таних; одоогоор OCR хэмжээ/байрлал/хэрэглэгчийн дүрэм
+- [ ] OCR/ASR accuracy хэмжилт: PART004 50+ кадр ба 100+ аудио, гар QA reference
 
-## II шат — үнэгүй OCR / хэв маяг таних (код бичсэн, бодит видео дээр баталгаажуулах шаардлагатай)
-- [x] Tesseract.js: Чех+Англи бичвэр, мөрийн координат; API түлхүүргүй
-- [x] Хэв маягийн rule: байрлал + үсгийн хэмжээ + color/weight (хэрэв OCR өгсөн) + хэрэглэгчийн ангилал
-- [x] Хараахан холбоогүй OCR текстийг нэгтгэсэн жагсаалтад үзүүлэх
-- [x] Нэг видеоны ижил бичвэрийг давхардахаас хамгаалах
-- [x] Gemini OCR зөвхөн BYBE_OCR_ENGINE=gemini тохируулсан үед
-- [ ] Өнгө, bold/regular-ийг зургаас бодитоор тооцоолох (локал OCR одоогоор unknown)
-- [ ] OCR чанар, Чех диакритикийн 50+ кадрын алдааны хэмжилт
-- [ ] Бүх видео кадрыг бус, текст солигдох мөчийг сонгон OCR хийх автомат scanner
-- [ ] Хэлний traineddata файлыг Windows багцад хамт суулгаж бүрэн offline OCR болгох
+## 3. Файл, waveform, WAV, QA
+- [x] Том файлыг 8 MB хэсэгчлэн локал серверт оруулах, импорт үргэлжлүүлэх
+- [x] FFprobe duration / SHA256 / оригиналыг дарж устгахгүй хадгалалт
+- [x] FFmpeg PCM waveform peaks, popup fine trim, WAV 44.1 kHz/16-bit mono
+- [x] Шинэ WAV revision бүр тусдаа нэр, hash, playback/download
+- [x] 6 хүний QA шалгалт, текст/хугацаа/төрөл хэштэй таарах баталгаажуулалт
+- [x] `APP_READY JSON` зөвхөн баталгаажсан revision-ийн metadata
+- [x] Optional MKV→MP4 browser preview remux (видео кодек H264 зэрэг дэмжигдэх хэрэгтэй)
+- [ ] Олон WAV-ийг bulk ZIP package болгон сургалтын аппад экспортлох
+- [ ] SQLite транзакцтай хадгалалт; одоогоор JSON manifests + browser localStorage
+- [ ] Windows бодит 6 цагийн видео + 8GB GPU дээр хурд, диск, санах ойн stress test
 
-## III шат — найдвартай бодит WAV + waveform
-- [ ] FFmpeg/ffprobe локал worker, preview video/аудио peaks
-- [ ] Сонголтын бодит WAV, source SHA256, revision ID, түүх хадгалах
-- [ ] Зөвшөөрөлтэй filename гаргах (Чех Unicode хадгалах)
-- [ ] Хадгалсан WAV-г тоглуулж QA шалгах, эх/төгсгөлийг дахин засах
-- [ ] Текст+role+start/end өөрчилбөл бүх QA-г reset хийх
-- [ ] APP_READY зөвхөн бодит WAV + текст + QA дээр үүсэх
+## 4. Гүйцэтгэл ба тасралтгүй ажиллах найдвартай байдал
+- [x] OCR/ASR 5 минутын ажлын queue, part-by-part incremental results
+- [x] Тус тусад нь pause/resume; Node сервер ажиллаж байвал browser хаасан ч processing үргэлжлэх
+- [x] Job manifest-ыг дискэнд хадгалах, restart-д дуусаагүй part дахин ажиллуулах логик
+- [ ] Хэсэглэлийг чимээгүй/хичээл солигдох бодит заагт уян хатан тааруулах
+- [ ] GPU/CPU adaptive load, VRAM/RAM хэмжилт, алдаатай part-г эрэмбэлэн retry
+- [ ] Алдаатай эх файл, тасалдсан power/network, дүүрсэн диск зэрэг edge case-уудыг Windows дээр турших
 
-## IV шат — локал AI: Qwen ба Whisper-ийн харьцуулсан туршилт
-- [ ] PART004 ижил 3–5 минут дээр Qwen3-ASR-1.7B vs faster-whisper-г хэмжих
-- [ ] Чех forced alignment (Czech wav2vec2), VAD, ASR language detection
-- [ ] Нэг аудио = нэг бичвэр гэдгийг мөрүүдээр автоматаар санал болгох
-- [ ] Үг/өгүүлбэрийн хэв маяг + OCR + ASR + VAD логикийг нэгтгэх
-- [ ] Тогтмол confidence 0.95/96, зохиомол start/end хийхгүй
-- [ ] 4 Чех аудио ба 2 Англи туслах аудионы ангилал; өөр видео бол уян хатан
+## 5. Хөгжүүлэлтийн холболт, баталгаажуулалт
+- [x] GitHub тусдаа feature branch, draft PR, `main`/Google AI Studio-ийн 40 unpushed өөрчлөлт хамгаалагдсан
+- [x] GitHub Actions: TypeScript, unit, build, FFmpeg synthetic MP4/media API smoke, Python syntax
+- [ ] Google AI Studio workspace-ийн 40 файлыг ZIP backup + diff + non-destructive merge
+- [ ] Secure MCP remote integration (authentication/permission + backend authorization)
+- [ ] Windows local user acceptance; 6 цагийн бичлэг дээр сэргээх, найдвартай export шалгах
 
-## V шат — зургаан цагийн тасралтгүй background pipeline
-- [ ] Local Python/Node worker, SQLite job queue, CPU/GPU нөөцийн хяналт
-- [ ] 5 минутын virtual part; ярианы заагт уян хатан таслах, overlap ownership
-- [ ] Эхний part бэлэн болмогц UI ажиллана, үлдсэнийг цаана нь боловсруулна
-- [ ] Pause/resume/retry, тасалдсан job сэргээх, queue processing дэс
-- [ ] Текст солигдсон кадрыг давтаж OCR хийхгүй, кэш ба хэш
-- [ ] Background service ажиллаж байгаа үед browser хаасан ч ажил үргэлжилнэ (компьютер унтарвал зогсоно)
-- [ ] Windows i7-10750H / RTX2070Super 8GB / RAM16GB дээр CPU/GPU эрэмбэлэлт
+## Одоо яг хийх Windows тест
+1. `Ctrl+C` ашиглан ажиллаж буй BYBE server-ийг зогсооно.
+2. `cd /d D:\bybe-studio\BYBE-new`, `git pull origin feature/typography-ocr-workstation`, `npm install`, `npm run dev`.
+3. `ffmpeg -version`, `ffprobe -version` — хоёул ажилладаг байх.
+4. Видео сонго → локал аудио холбох → бодит waveform харагдах → нэг clip чирж T+OCR тексттэй холбох.
+5. Clip-ийн WAV үүсгэх → WAV-г сонсох → 6 QA → APP_READY JSON-г шалгах.
+6. OCR бүх хэсэг → эхний үр дүн гарч ирэхэд бусад хэсэг ард ажиллаж байгаа эсэхийг харах.
+7. Optional faster-whisper: `INSTALL_WHISPER_WINDOWS.bat` ажиллуулаад Whisper ASR хэсэг сонгож турших.
+8. Компьютер унтраахгүйгээр Node server restart / JSON сэргээх тест.
 
-## VI шат — Google AI Studio, GitHub, MCP
-- [x] GitHub feature branch, CI, draft PR — main болон AI Studio 40 unpushed file хамгаалагдсан
-- [ ] AI Studio 40 файлыг ZIP backup хийж safe diff/merge хийнэ
-- [ ] Ажлын нэгтгэсэн UI-г PR-ээс main руу зөвшөөрөлтэй merge
-- [ ] MCP secure remote integration (эрх/тариф/порт/нэвтрэлт шалгасны дараа)
-- [ ] Live Voice модуль хэвээр; үндсэн редактороос тусгаарлагдсан
+Тест амжилттай болсон гэсэн дүгнэлт гаргахын өмнө бодит PART004 эх видео, хадгалсан WAV тексттэй таарч байгаа, эхний/сүүлийн авиа бүтэн гэдгийг сонсож шалгах шаардлагатай.
 
-## Дараагийн бодит шалгалтын 5 алхам
-1. START_BYBE.bat нээж, http://localhost:3000 дээр UI ачаалагдах.
-2. Browser-т дэмжигдэх MP4 видео нээж, frame OCR хийж Czech текстийн байршлын ногоон хүрээ зөв эсэхийг шалгах.
-3. Нэг Чех үгийг «Чех үг» гэж style rule-д оруулж, дараагийн кадрын ижил байрлал/size-тай текст ангилагдах эсэхийг шалгах.
-4. Timeline-д хэсэг чирэх → T → текст дээр click → зүүн жагсаалтад бичвэр+хугацаа үүсэх → play/loop/edit/Enter/save шалгах.
-5. Экспорт JSON → програм нээх → JSON импорт, өмнөх эхлэл/төгсгөл, текст хадгалагдсан эсэхийг шалгах.
-
-Тайлбар: I/II шатны код GitHub CI-д compile/test/build шалгалт давсан ч бодит Windows хэрэглээ, OCR хэлний багц таталт, тааруулалтын нарийвчлал баталгаажаагүй.
+**Заавар:** [QUICK_START_MN.md](QUICK_START_MN.md). **Төлөв:** [WORKSTATION_STATUS_MN.md](WORKSTATION_STATUS_MN.md).
