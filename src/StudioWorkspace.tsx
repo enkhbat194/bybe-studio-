@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AudioLines, Check, ChevronLeft, ChevronRight, Clipboard, Download, Edit3, FileVideo, FolderOpen, Play, Repeat2, Save, ScanText, Settings2, X } from 'lucide-react';
 import { planParts, owningPart } from './lib/parts';
 import { effectiveRole, roleLabel, sameScreenText, styleRuleFromBlock, styleSignature, validateBlock, type FrameResult, type OcrBlock, type StyleRule, type TextRole } from './lib/typography';
 import { useMediaEngine } from './useMediaEngine';
+import { useBackgroundScan } from './useBackgroundScan';
 import './StudioWorkspace.css';
 
 type ClipKind='word_normal'|'word_slow'|'sentence_normal'|'sentence_slow'|'english_word'|'english_sentence'|'unknown';
@@ -257,6 +258,14 @@ export default function StudioWorkspace(){
  const startOfView=part.coreStart+Math.max(0,Math.min(part.coreEnd-part.coreStart-span,current-(part.coreStart+span/2)));
  const endOfView=startOfView+span;
  const media=useMediaEngine(file,startOfView,endOfView);
+ const mergeFrames=useCallback((newFrames:FrameResult[])=>{
+  setFrames(old=>{
+   const all=new Map(old.map(f=>[f.frameSec.toFixed(2),f]));
+   for(const frame of newFrames)if(!all.has(frame.frameSec.toFixed(2)))all.set(frame.frameSec.toFixed(2),frame);
+   return Array.from(all.values()).sort((a,b)=>a.frameSec-b.frameSec);
+  });
+ },[]);
+ const scan=useBackgroundScan(media.sourceId,mergeFrames);
  useEffect(()=>{if(!duration && media.sourceDuration>0)setDuration(media.sourceDuration);},[duration,media.sourceDuration]);
  const pct=(sec:number)=>100*(sec-startOfView)/Math.max(.001,endOfView-startOfView);
  const soundBars=useMemo(()=>media.peaks.map((amplitude,i)=>(
@@ -284,8 +293,18 @@ export default function StudioWorkspace(){
    </button>}
    {media.working&&<button onClick={media.cancel}>Импортыг зогсоох</button>}
    <button onClick={()=>void captureFrame()} disabled={!src||busy}><ScanText size={17}/> {busy?'Уншиж байна…':'Кадрын OCR'}</button>
+   <button disabled={!media.sourceId||scan.busy||!!scan.job&&scan.job.status!=='error'} onClick={()=>void scan.start()}>
+    <ScanText size={17}/> Бүх видеоны OCR
+   </button>
+   {scan.job?.status==='running'&&<button onClick={()=>void scan.pause()}>OCR түр зогсоох</button>}
+   {scan.job?.status==='paused'&&<button onClick={()=>void scan.resume()}>OCR үргэлжлүүлэх</button>}
    <span className="bybe-top-status">{file?.name??'Эх видео сонгоогүй'} · {ocrMode}</span>
   </header>
+  {scan.job&&<div className="bybe-message" role="status">
+    Автомат OCR: {scan.job.message} · {scan.job.nextPart}/{scan.job.totalParts} хэсэг
+    {scan.job.status==='complete'?' · Дууссан':''}
+   </div>}
+  {scan.message&&<div className="bybe-message" role="status">{scan.message}</div>}
   {media.status&&<div className="bybe-message" role="status">{media.status}
     {media.lastRevision&&media.sourceId&&<a href={'/api/media/'+media.sourceId+'/revisions/'+media.lastRevision.id+'/download'} download>WAV татах: {media.lastRevision.filename}</a>}
    </div>}
