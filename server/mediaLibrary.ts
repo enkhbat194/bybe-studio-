@@ -188,6 +188,23 @@ export function registerMediaRoutes(app:Express):void{
   const preview=path.join(sourceDir(m.id),'browser-preview.mp4');
   try{await fsp.access(preview);res.type('mp4');res.sendFile(preview);}catch{res.status(404).end();}
  });
+ // Listen to a temporary interval without creating a WAV revision or touching the video player.
+ // Decodes at most 300 s into memory; never tries to load all six hours at once.
+ app.get('/api/media/:id/listen',async(req,res)=>{
+  const m=await sourceOr404(req.params.id,res);if(!m)return;
+  if(m.state!=='ready'||!m.duration){res.status(409).json({error:'Эх аудио бэлэн биш.'});return;}
+  const start=num(req.query.start),end=num(req.query.end);
+  if(!validClip(start,end,m.duration)){
+   res.status(400).json({error:'Сонсох хугацаа 0.04–300 секунд, эх файлын хүрээнд байх ёстой.'});return;
+  }
+  try{
+   const out=await ffRun(['-hide_banner','-nostdin','-loglevel','error','-ss',String(start),
+     '-i',original(m.id),'-t',String(end-start),'-vn','-ac','1','-ar','24000',
+     '-c:a','pcm_s16le','-f','wav','pipe:1'],'ffmpeg',17_000_000);
+   if(out.code!==0||out.stdout.length<44)throw Error('Аудио preview алдаа: '+out.stderr.slice(-240));
+   res.set('Cache-Control','no-store');res.type('wav');res.send(out.stdout);
+  }catch(e){fail(res,e);}
+ });
  app.get('/api/media/:id/peaks',async(req,res)=>{
   const m=await sourceOr404(req.params.id,res);if(!m)return;
   if(m.state!=='ready'||!m.duration){res.status(409).json({error:'Видео бүрэн импортлогдоогүй.'});return;}
