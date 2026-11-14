@@ -7,6 +7,7 @@ import { GoogleGenAI } from '@google/genai';
 import { registerTypographyRoutes } from './server/ocrTypography';
 import { registerMediaRoutes } from './server/mediaLibrary';
 import { registerScanRoutes, recoverScanJobs } from './server/backgroundScan';
+import { registerLocalAsrRoutes } from './server/localAsr';
 
 const app=express();
 const PORT=Number(process.env.PORT||3000);
@@ -29,6 +30,7 @@ function sendError(error:unknown):string {
 registerTypographyRoutes(app,client);
 registerMediaRoutes(app);
 registerScanRoutes(app);
+registerLocalAsrRoutes(app);
 app.get('/api/health',(_req,res)=>res.json({ok:true,hasApiKey:client()!==null,locale:'mn',
   liveVoiceEnabled:process.env.BYBE_ENABLE_LIVE_VOICE==='true',
   ocrEngine:process.env.BYBE_OCR_ENGINE==='gemini'?'gemini-opt-in':'tesseract-local'}));
