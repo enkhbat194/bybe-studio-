@@ -61,3 +61,11 @@
 .bybe-wave-bar{position:absolute;top:50%;transform:translateY(-50%);background:#4ddbb4;opacity:.7;border-radius:1px;pointer-events:none}
 .bybe-message a{color:#a0ffda;text-decoration:underline;overflow-wrap:anywhere}
 .bybe-row-actions button:disabled{opacity:.3}
+
+.bybe-export-qa{border:1px solid #356f67;background:#0e2b30;padding:12px;border-radius:10px;margin-top:14px}
+.bybe-export-qa h3{font-size:13px;margin:0 0 10px}
+.bybe-export-qa audio{width:100%;margin:6px 0 14px;max-height:42px}
+.bybe-qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.bybe-qa-grid label{display:flex;align-items:center;gap:8px;font-size:12px;border:1px solid #345a5a;border-radius:7px;padding:7px}
+.bybe-qa-grid input{accent-color:#23c9a0}
+@media(max-width:600px){.bybe-qa-grid{grid-template-columns:1fr}}
