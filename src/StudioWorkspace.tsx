@@ -455,7 +455,7 @@ export default function StudioWorkspace(){
    </button>
    {scan.job?.status==='running'&&<button onClick={()=>void scan.pause()}>OCR түр зогсоох</button>}
    {scan.job?.status==='paused'&&<button onClick={()=>void scan.resume()}>OCR үргэлжлүүлэх</button>}
-  </nav>
+  </nav>}
   {backgroundAsr.job&&<div className="bybe-message" role="status">
    Whisper: {backgroundAsr.job.message} · {backgroundAsr.job.nextPart}/{backgroundAsr.job.totalParts} хэсэг
   </div>}
