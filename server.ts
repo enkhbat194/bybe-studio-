@@ -4,6 +4,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
+import { registerTypographyRoutes } from './server/ocrTypography';
 
 const app=express();
 const PORT=Number(process.env.PORT||3000);
@@ -22,6 +23,7 @@ function sendError(error:unknown):string {
   if(msg.includes('403')||msg.includes('API_KEY_INVALID'))return 'Gemini API түлхүүрийн эрх эсвэл утга буруу байна.';
   return 'AI хүсэлт амжилтгүй боллоо. Серверийн логийг шалгана уу.';
 }
+registerTypographyRoutes(app,client);
 app.get('/api/health',(_req,res)=>res.json({ok:true,hasApiKey:client()!==null,locale:'mn',
   liveVoiceEnabled:process.env.BYBE_ENABLE_LIVE_VOICE==='true'}));
 
