@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AudioLines, Check, ChevronLeft, ChevronRight, Clipboard, Download, Edit3, FileVideo, FolderOpen, Play, Repeat2, Save, ScanText, Settings2, X } from 'lucide-react';
 import { planParts, owningPart } from './lib/parts';
 import { effectiveRole, roleLabel, sameScreenText, styleRuleFromBlock, styleSignature, validateBlock, type FrameResult, type OcrBlock, type StyleRule, type TextRole } from './lib/typography';
+import { useMediaEngine } from './useMediaEngine';
 import './StudioWorkspace.css';
 
 type ClipKind='word_normal'|'word_slow'|'sentence_normal'|'sentence_slow'|'english_word'|'english_sentence'|'unknown';
@@ -255,7 +256,15 @@ export default function StudioWorkspace(){
  const span=(part.coreEnd-part.coreStart)/zoom;
  const startOfView=part.coreStart+Math.max(0,Math.min(part.coreEnd-part.coreStart-span,current-(part.coreStart+span/2)));
  const endOfView=startOfView+span;
+ const media=useMediaEngine(file,startOfView,endOfView);
+ useEffect(()=>{if(!duration && media.sourceDuration>0)setDuration(media.sourceDuration);},[duration,media.sourceDuration]);
  const pct=(sec:number)=>100*(sec-startOfView)/Math.max(.001,endOfView-startOfView);
+ const soundBars=useMemo(()=>media.peaks.map((amplitude,i)=>(
+  <i key={i} className="bybe-wave-bar" style={{
+    left:100*i/media.peaks.length+'%',height:Math.max(2,amplitude*84)+'%',
+    width:100/media.peaks.length+'%',
+  }}/>
+ )),[media.peaks]);
  const rows=segments.filter(s=>s.start<part.coreEnd&&s.end>part.coreStart);
  const videoAspect=video.current?.videoWidth&&video.current?.videoHeight?video.current.videoWidth/video.current.videoHeight:16/9;
 
@@ -266,10 +275,20 @@ export default function StudioWorkspace(){
    <input ref={importPicker} hidden type="file" accept="application/json,.json" onChange={e=>void importJson(e.target.files?.[0])}/>
    <button onClick={()=>filePicker.current?.click()}><FolderOpen size={17}/> Файл нээх</button>
    <button onClick={()=>importPicker.current?.click()}><FileVideo size={17}/> Бүртгэл оруулах</button>
-   <button onClick={exportJson}><Download size={17}/> Экспорт</button>
+   <button onClick={exportJson}><Download size={17}/> JSON экспорт</button>
+   <button onClick={()=>void media.upload()} disabled={!file||media.working||!!media.sourceId}>
+    <Save size={17}/> {media.working&&media.progress!==null?'Импорт '+media.progress+'%':media.sourceId?'FFmpeg бэлэн':'Локал аудио холбох'}
+   </button>
+   {media.sourceId&&<button onClick={()=>void media.preparePreview()} disabled={media.working}>
+    <FileVideo size={17}/> MKV → MP4 үзэх
+   </button>}
+   {media.working&&<button onClick={media.cancel}>Импортыг зогсоох</button>}
    <button onClick={()=>void captureFrame()} disabled={!src||busy}><ScanText size={17}/> {busy?'Уншиж байна…':'Кадрын OCR'}</button>
    <span className="bybe-top-status">{file?.name??'Эх видео сонгоогүй'} · {ocrMode}</span>
   </header>
+  {media.status&&<div className="bybe-message" role="status">{media.status}
+    {media.lastRevision&&media.sourceId&&<a href={'/api/media/'+media.sourceId+'/revisions/'+media.lastRevision.id+'/download'} download>WAV татах: {media.lastRevision.filename}</a>}
+   </div>}
   {status&&<div className="bybe-message" role="status">{status}<button aria-label="Мессеж хаах" onClick={()=>setStatus('')}><X size={15}/></button></div>}
   <main className="bybe-core">
    <section className="bybe-transcript panel">
@@ -284,6 +303,8 @@ export default function StudioWorkspace(){
         <button title="Сонсох" aria-label={s.text+' сонсох'} onClick={()=>play(s,false)}><Play size={15}/></button>
         <button className={loop===s.id?'is-loop':''} title="Тасралтгүй давтах" aria-label={s.text+' давтах'} onClick={()=>loop===s.id?(setLoop(null),video.current?.pause()):play(s,true)}><Repeat2 size={15}/></button>
         <button title="Засах" aria-label={s.text+' засах'} onClick={()=>beginEdit(s)}><Edit3 size={15}/></button>
+        <button disabled={!media.sourceId||media.working} title="Жинхэнэ WAV шинэ хувилбар хадгалах (QA шалгах шаардлагатай)"
+         aria-label={s.text+' WAV үүсгэх'} onClick={()=>void media.exportWav(s)}><Download size={15}/></button>
        </div>
       </div>)}
      {unlinked.map(b=><div key={b.id} className="bybe-ocr-row">
@@ -299,7 +320,7 @@ export default function StudioWorkspace(){
     <header><h2>Эх видео · нэг товшилтын текст</h2><span>Текст таних: {frame?'кадр бэлэн':'энэ кадрт байхгүй'}</span></header>
     <div className="bybe-video-holder">
      {src?<div className="bybe-video-frame" style={{aspectRatio:String(videoAspect)}}>
-      <video ref={video} src={src} controls playsInline preload="metadata"
+      <video ref={video} src={media.previewUrl||src} controls playsInline preload="metadata"
        onTimeUpdate={onTimeTick}
        onLoadedMetadata={e=>{const d=e.currentTarget.duration;setDuration(Number.isFinite(d)?d:0);}}
        onError={()=>setStatus('Файлын кодекийг браузер уншиж чадсангүй. MKV-г FFmpeg-ээр MP4 preview болгон хөрвүүлэх шаардлагатай.')}
@@ -332,6 +353,7 @@ export default function StudioWorkspace(){
    </div>
    <div className="bybe-track" ref={pointerBox} onPointerDown={beginDrag} onPointerMove={drag} onPointerUp={endDrag}>
     <div className="bybe-track-grid"/>
+    {soundBars.length>0&&<div className="bybe-wave-peaks">{soundBars}</div>}
     {segments.filter(s=>s.start<endOfView&&s.end>startOfView).map(s=><div className="bybe-track-segment" key={s.id}
      style={{left:Math.max(0,pct(s.start))+'%',width:Math.max(.3,Math.min(100,pct(s.end))-Math.max(0,pct(s.start)))+'%'}} title={s.text}/>)}
     {selectedRange&&selectedRange.end>startOfView&&selectedRange.start<endOfView&&<div className="bybe-track-selection"
@@ -343,7 +365,9 @@ export default function StudioWorkspace(){
     <span>{selectedRange?'Сонгосон: '+time(selectedRange.start)+' – '+time(selectedRange.end)+' · T → текст дээр товших':'Хулганаар чирж хугацаа сонгох · нэг товшилтоор гүйлгэх'}</span>
     <span>{time(endOfView)}</span>
    </div>
-   <p className="bybe-help">Энэ нь хугацаа сонгох шугам. Бодит дууны waveform болон WAV таслагчийг локал FFmpeg хөдөлгүүртэй холбох ажил тусдаа; хиймэл долгион зурж аудио шинжилсэн мэт харуулаагүй.</p>
+   <p className="bybe-help">{media.sourceId?
+    'Бодит waveform: FFmpeg аудионоос тооцсон долгион. Аудионы мөрийн ↓ товчоор шинэ WAV revision хадгална. QA баталгаажуулалт тусдаа.' :
+    'Эх файлыг «Локал аудио холбох» товчоор энэ компьютерийн FFmpeg хөдөлгүүрт оруулбал бодит waveform болон WAV экспорт идэвхжинэ.'}</p>
   </section>
   {styleTarget&&<div className="bybe-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setStyleTarget(null);}}>
    <section className="bybe-modal" role="dialog" aria-modal="true" aria-label="Текстийн хэв маяг">
