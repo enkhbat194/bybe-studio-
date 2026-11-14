@@ -57,8 +57,18 @@ export function blocksFromTsv(tsv: string, width: number, height: number, frameS
     const right=Math.min(1,line.x1/width),bottom=Math.min(1,line.y1/height);
     if(right<=x||bottom<=y)continue;
     const text=line.text.join(' ').normalize('NFC').trim();
-    if(!text || text.length>600)continue;
+    const confidence=line.score.reduce((n,v)=>n+v,0)/Math.max(1,line.score.length);
+    if(!text || text.length>400 || confidence<53)continue;
+    // Screenshot layout: Czech lesson overlays, not arbitrary presenter-face shapes.
+    // CzechClass watermark, circle counter and noisy microscopic artifacts are not content.
+    if(/(?:CzechClass101|https?:|www\\.|^\\d+[.\\d]*$)/i.test(text))continue;
+    const letters=(text.match(/[\\p{L}]/gu)||[]).length;
+    if(letters<2||letters/Math.max(1,text.length)<.46)continue;
     const relativeHeight=bottom-y;
+    const topLeft=x<.50&&y<.47&&relativeHeight>=.022;
+    const prominentCenter=relativeHeight>=.046&&x<.84&&y<.74;
+    const subtitle=y>=.57&&y<.95&&relativeHeight>=.022&&text.length>=7;
+    if(!(topLeft||prominentCenter||subtitle))continue;
     const size: OcrBlock['size'] = relativeHeight>=.05?'large':relativeHeight>=.028?'medium':'small';
     out.push({
       id:'f'+Math.round(frameSec*1000)+'-b'+out.length,
