@@ -59,6 +59,7 @@ export default function StudioWorkspace(){
  const [loop,setLoop]=useState<string|null>(null);
  const [partIndex,setPartIndex]=useState(0);
  const [ocrMode,setOcrMode]=useState('Локал OCR');
+ const [asrBusy,setAsrBusy]=useState(false);
  const [zoom,setZoom]=useState(1);
  const video=useRef<HTMLVideoElement|null>(null);
  const seekEnd=useRef<number|null>(null);
@@ -223,9 +224,40 @@ export default function StudioWorkspace(){
    setSegments(old=>[...old,seg].sort((a,c)=>a.start-c.start));
    setSelectedId(seg.id);setSelectedRange(null);setTextMode(false);
    setStatus('Аудионы хэсгийг "'+b.text+'" бичвэртэй холболоо. Сонсож шалгах шаардлагатай.');
+  }else if(textMode&&selected){
+   setSegments(old=>old.map(c=>c.id===selected.id?{
+    ...c,text:b.text,kind:kindFromRole(role)==='unknown'?c.kind:kindFromRole(role),
+    frameSec:b.frameSec,ocrId:b.id,styleSignature:styleSignature(b),
+    qa:'REVIEW_REQUIRED' as const,updatedAt:new Date().toISOString()
+   }:c));
+   setTextMode(false);
+   setStatus('Сонгосон аудионы бичвэрийг "'+b.text+'" болгож холболоо. QA дахин шалгах шаардлагатай.');
   }else{
    void navigator.clipboard?.writeText(b.text).then(()=>setStatus('Текст хуулагдлаа: '+b.text)).catch(()=>setStatus('Текст: '+b.text));
   }
+ }
+ async function transcribePart(){
+  if(!media.sourceId){setStatus('Whisper ашиглахын өмнө эх видеог локал хөдөлгүүрт холбох хэрэгтэй.');return;}
+  setAsrBusy(true);setStatus('Локал Whisper яриа таньж байна. Хугацаа шаардаж болно…');
+  try{
+   const result=await fetch('/api/asr/part',{method:'POST',
+    headers:{'X-BYBE-Request':'1','Content-Type':'application/json'},
+    body:JSON.stringify({sourceId:media.sourceId,start:part.coreStart,end:part.coreEnd})});
+   const data=await result.json();
+   if(!result.ok)throw Error(data.error||'Whisper алдаа');
+   const candidates=(Array.isArray(data.segments)?data.segments:[]).filter((c:any)=>
+    typeof c.text==='string'&&typeof c.start==='number'&&typeof c.end==='number'&&
+    c.start>=0&&c.end>c.start) as Array<{text:string;start:number;end:number}>;
+   const created=candidates.map(c=>({
+    id:crypto.randomUUID(),sourceKey,text:c.text,kind:'unknown' as const,
+    start:n3(c.start),end:n3(c.end),frameSec:null,ocrId:null,styleSignature:null,
+    qa:'REVIEW_REQUIRED' as const,updatedAt:new Date().toISOString()
+   }));
+   setSegments(old=>[...old,...created.filter(c=>!old.some(x=>Math.abs(x.start-c.start)<.35&&
+    Math.abs(x.end-c.end)<.35))].sort((a,b)=>a.start-b.start));
+   setStatus('Whisper '+data.device+' дээр '+created.length+' ярианы хэсэг санал болголоо. Хэлний ангилал ба текстийг сонсож баталгаажуулна.');
+  }catch(e){setStatus(e instanceof Error?e.message:'Whisper танилтын алдаа');}
+  finally{setAsrBusy(false);}
  }
  function saveStyleRule(){
   if(!styleTarget)return;
@@ -293,6 +325,9 @@ export default function StudioWorkspace(){
    </button>}
    {media.working&&<button onClick={media.cancel}>Импортыг зогсоох</button>}
    <button onClick={()=>void captureFrame()} disabled={!src||busy}><ScanText size={17}/> {busy?'Уншиж байна…':'Кадрын OCR'}</button>
+   <button onClick={()=>void transcribePart()} disabled={!media.sourceId||asrBusy}>
+    <AudioLines size={17}/> {asrBusy?'Whisper ажиллаж байна…':'Энэ хэсгийн яриа таних'}
+   </button>
    <button disabled={!media.sourceId||scan.busy||!!scan.job&&scan.job.status!=='error'} onClick={()=>void scan.start()}>
     <ScanText size={17}/> Бүх видеоны OCR
    </button>
