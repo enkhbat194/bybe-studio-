@@ -268,6 +268,13 @@ export function registerMediaRoutes(app:Express):void{
       .map(r=>({revisionId:r.id,clipId:r.clipId,text:r.text,kind:r.kind,start:r.start,end:r.end,
         filename:r.filename,sha256:r.sha256,verifiedAt:r.verifiedAt}))});
  });
+ app.get('/api/media/:id/revisions/:revisionId/stream',async(req,res)=>{
+  const m=await sourceOr404(req.params.id,res);if(!m)return;
+  const rev=m.revisions.find(r=>r.id===req.params.revisionId);
+  if(!rev){res.status(404).end();return;}
+  const wav=path.join(sourceDir(m.id),'revisions',rev.filename);
+  try{await fsp.access(wav);res.type('wav');res.sendFile(wav);}catch{res.status(404).end();}
+ });
  app.get('/api/media/:id/revisions/:revisionId/download',async(req,res)=>{
   const m=await sourceOr404(req.params.id,res);if(!m)return;
   const rev=m.revisions.find(r=>r.id===req.params.revisionId);
