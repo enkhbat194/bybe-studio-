@@ -66,8 +66,8 @@ try{
  const verified=await json('/api/media/'+created.id+'/revisions/'+rev.id+'/verify','POST',{
   clipId:'smoke-1',text:'růžová',kind:'word_normal',start:.2,end:1.2,checks:qa});
  if(verified.qa!=='MANUALLY_VERIFIED')throw Error('Six-check QA failed');
- const ready=await json('/api/media/'+created.id+'/app-ready');
- if(ready.clips.length!==1||ready.clips[0].sha256!==rev.sha256)throw Error('App-ready hash manifest mismatch');
+ const appReady=await json('/api/media/'+created.id+'/app-ready');
+ if(appReady.clips.length!==1||appReady.clips[0].sha256!==rev.sha256)throw Error('App-ready hash manifest mismatch');
  const streamed=await fetch(BASE+'/api/media/'+created.id+'/revisions/'+rev.id+'/stream');
  const streamedWav=Buffer.from(await streamed.arrayBuffer());
  if(!streamed.ok||streamedWav.toString('ascii',0,4)!=='RIFF')throw Error('Inline QA WAV failed');
