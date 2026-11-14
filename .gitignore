@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env*
+!.env.example
+.DS_Store
+local_data/
+uploads/
+private_media/
+*.wav
+*.mp3
+*.mp4
+*.mkv
