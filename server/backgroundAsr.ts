@@ -77,7 +77,15 @@ export function registerBackgroundAsr(app:Express){
   const source=await getLocalSource(id);
   if(!source||!source.meta.duration){res.status(404).json({error:'Эх видео бэлэн биш.'});return;}
   const existing=Array.from(jobs.values()).find(j=>j.sourceId===id);
-  if(existing){res.json(existing);return;}
+  if(existing){
+   // A failed job from before faster-whisper was installed is not permanent.
+   // A new explicit start request may resume it without deleting completed parts.
+   if(existing.status==='error'){
+    existing.status='queued';existing.message='Whisper дахин эхэлж байна';
+    await save(existing);res.json(existing);void run();return;
+   }
+   res.json(existing);return;
+  }
   const job:Job={id:randomUUID(),sourceId:id,status:'queued',nextPart:0,
    totalParts:planParts(source.meta.duration,5,2).length,message:'ASR дараалалд',
    updatedAt:new Date().toISOString()};
