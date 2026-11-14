@@ -8,6 +8,7 @@ import { useBackgroundScan } from './useBackgroundScan';
 import { useBackgroundAsr, type AsrCandidate } from './useBackgroundAsr';
 import ClipWaveEditor from './ClipWaveEditor';
 import './StudioWorkspace.css';
+import './StudioWorkspaceRefine.css';
 
 type ClipKind='word_normal'|'word_slow'|'sentence_normal'|'sentence_slow'|'english_word'|'english_sentence'|'unknown';
 const qaItems={
@@ -510,7 +511,7 @@ export default function StudioWorkspace(){
   </div>}
   <main className="bybe-core">
    <section className="bybe-transcript panel">
-    <header><h2>Текст · аудионы жагсаалт</h2><span>{rows.length} аудио · {unlinked.length} OCR · QA {reviewCount}</span></header>
+    <header><h2>Текст ба аудионы хэсгүүд</h2><span>{rows.length} аудио · {unlinked.length} OCR · QA {reviewCount}</span></header>
     <div className="bybe-rows" ref={listRef} onWheel={()=>{manualList.current=true;window.setTimeout(()=>manualList.current=false,3000);}}>
      {rows.length===0&&unlinked.length===0?<div className="bybe-empty">
       <strong>{!file?'Эх видеогоо нээнэ үү.':!media.sourceId?'Видео бэлтгэж байна…':scan.job?.status==='running'?'OCR кадруудыг уншиж байна…':'Энэ хэсгийн текст хараахан илрээгүй.'}</strong>
@@ -541,7 +542,7 @@ export default function StudioWorkspace(){
     </div>
    </section>
    <section className="bybe-preview panel">
-    <header><h2>Эх видео · нэг товшилтын текст</h2><span>Текст таних: {frame?'кадр бэлэн':'энэ кадрт байхгүй'}</span></header>
+    <header><h2>Эх видео · текст сонгох</h2><span>Текст таних: {frame?'кадр бэлэн':'энэ кадрт байхгүй'}</span></header>
     <div className="bybe-video-holder">
      {src?<div className="bybe-video-frame" style={{aspectRatio:String(videoAspect)}}>
       <video ref={video} src={media.previewUrl||src} controls playsInline preload="metadata"
@@ -567,7 +568,7 @@ export default function StudioWorkspace(){
    </section>
   </main>
   <section className="bybe-timeline panel">
-   <header><h2>Үндсэн аудионы хугацааны шугам</h2>
+   <header><h2>Аудионы хугацааны шугам</h2>
     <div><button onClick={()=>setZoom(x=>Math.max(1,x/2))}>−</button><span> ×{zoom}</span><button onClick={()=>setZoom(x=>Math.min(8,x*2))}>＋</button></div>
    </header>
    <div className="bybe-partnav">
