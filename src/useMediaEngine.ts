@@ -49,8 +49,8 @@ export function useMediaEngine(file:File|null,start:number,end:number){
    let meta:Meta|null=null;
    if(id){try{meta=await request('/api/media/'+id);}catch{localStorage.removeItem(fileKey);id='';}}
    if(!meta){
-    meta=await request('/api/media/start','POST',{name:file.name,size:file.size,modified:file.lastModified});
-    id=meta.id;localStorage.setItem(fileKey,id);
+    const created=await request('/api/media/start','POST',{name:file.name,size:file.size,modified:file.lastModified}) as Meta;
+    meta=created;id=created.id;localStorage.setItem(fileKey,id);
    }
    if(meta.state==='ready'){
     setSourceId(id);setSourceDuration(meta.duration||0);setProgress(100);setStatus('Эх файл бэлэн.');return;
