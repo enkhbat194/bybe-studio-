@@ -526,7 +526,7 @@ export default function StudioWorkspace(){
     </div>
     {editing.revisionId&&media.sourceId&&<div className="bybe-export-qa">
      <h3>WAV хүний QA шалгалт</h3>
-     <audio controls preload="none" src={'/api/media/'+media.sourceId+'/revisions/'+editing.revisionId+'/download'}/>
+     <audio controls preload="none" src={'/api/media/'+media.sourceId+'/revisions/'+editing.revisionId+'/stream'}/>
      <div className="bybe-qa-grid">{(Object.keys(qaItems) as QAKey[]).map(key=>
       <label key={key}><input type="checkbox" checked={qaChecks[key]}
        onChange={e=>setQaChecks(old=>({...old,[key]:e.target.checked}))}/>{qaItems[key]}</label>)}</div>
