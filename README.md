@@ -1,7 +1,7 @@
 # BYBE Studio — Чех 800 · Монгол интерфэйс
 
 Үндсэн шинэ repository: https://github.com/enkhbat194/bybe-studio-
-Энэ repo нь өмнөх enkhbat194/bybe-studio-гүй эх хувилбараас тусдаа.
+Энэ нь өмнөх enkhbat194/bybe-studio repository-оос тусдаа шинэ төсөл.
 
 ## Хийгдсэн эхний шат
 - Монгол React UI: эх видеог browser-д нээх, кадрын OCR, аудионы start/end бүртгэл, эх видеоны сонгосон хэсгийг тоглуулах.
