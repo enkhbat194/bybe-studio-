@@ -542,6 +542,9 @@ export default function StudioWorkspace(){
       {capabilities&&(!capabilities.ffmpeg||!capabilities.ffprobe)&&
        <div className="bybe-diagnostic-error">FFmpeg/FFprobe олдсонгүй. Windows PATH-ийг шалга.</div>}
       {scan.job&&<div><strong>OCR:</strong> {scan.job.message}</div>}
+      {media.sourceId&&<div><strong>Автомат аудио:</strong> OCR бичвэр + FFmpeg аудионы идэвхтэй үе. 
+       {visualAudio.readyParts}/{parts.length} хэсгийн долгион, {estimated} урьдчилсан холбоос. 
+       Яг хэлсэн үгийг баталж чадахгүй тул сонсож QA хийнэ.</div>}
       {backgroundAsr.job&&<div><strong>Whisper:</strong> {backgroundAsr.job.message}</div>}
       {media.status&&<div><strong>Аудио:</strong> {media.status}</div>}
       {scan.message&&<div>{scan.message}</div>}
