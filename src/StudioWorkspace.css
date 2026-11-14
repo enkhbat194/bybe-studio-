@@ -55,3 +55,9 @@
 .bybe-ocr-row .bybe-row-text{flex:1}
 .bybe-ocr-row .bybe-row-text span{color:#d0effb}
 .bybe-ocr-row>button:not(.bybe-row-text){padding:7px}
+
+/* Real peaks from FFmpeg PCM. No decorative placeholder waveform. */
+.bybe-wave-peaks{position:absolute;inset:0;pointer-events:none;z-index:1}
+.bybe-wave-bar{position:absolute;top:50%;transform:translateY(-50%);background:#4ddbb4;opacity:.7;border-radius:1px;pointer-events:none}
+.bybe-message a{color:#a0ffda;text-decoration:underline;overflow-wrap:anywhere}
+.bybe-row-actions button:disabled{opacity:.3}
