@@ -99,3 +99,7 @@
 .bybe-workstation .panel .bybe-help{font-size:12px}
 @media(max-width:1000px){.bybe-process-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.bybe-core{grid-template-columns:1fr}}
 @media(max-width:600px){.bybe-process-strip{grid-template-columns:1fr 1fr}.bybe-process-step{font-size:11px;padding:8px}.bybe-logo{font-size:15px}}
+
+.bybe-dependency-warning{margin-top:10px;padding:12px 15px;border:1px solid #e2a451;border-radius:9px;background:#432911;color:#ffdfaa;font-size:13px;line-height:1.6}
+.bybe-dependency-warning strong{display:block;font-size:14px;color:#ffe3b0;margin-bottom:3px}
+.bybe-dependency-warning code{background:#25180e;border-radius:3px;padding:2px 4px;color:#fff1d6}
