@@ -69,3 +69,8 @@
 .bybe-qa-grid label{display:flex;align-items:center;gap:8px;font-size:12px;border:1px solid #345a5a;border-radius:7px;padding:7px}
 .bybe-qa-grid input{accent-color:#23c9a0}
 @media(max-width:600px){.bybe-qa-grid{grid-template-columns:1fr}}
+
+.bybe-clip-wave{background:#0c2335;border:1px solid #35556b;border-radius:10px;padding:10px;margin:4px 0 16px}
+.bybe-clip-help{font-size:11px;color:#bad5e8;margin-bottom:8px}
+.bybe-clip-times{display:flex;justify-content:space-between;gap:15px;font-variant-numeric:tabular-nums;color:#9fbbd4;font-size:11px;margin-top:6px}
+.bybe-clip-error{color:#ffad96!important;font-size:11px}
