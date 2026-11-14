@@ -26,11 +26,16 @@ export function blocksFromTsv(tsv: string, width: number, height: number, frameS
   if (!(width > 0) || !(height > 0) || !Number.isFinite(frameSec)) return [];
   type Line = { text: string[]; x0: number; y0: number; x1: number; y1: number; score: number[] };
   const lines = new Map<string, Line>();
-  const rows = tsv.split(/\r?\n/);
-  const header = rows.shift()?.split('\t') ?? [];
-  const column = (name: string) => header.indexOf(name);
-  const required = ['level','page_num','block_num','par_num','line_num','left','top','width','height','conf','text'];
-  if (required.some(k => column(k) === -1)) return [];
+  const rows = tsv.split(/\r?\n/).filter(row => row.trim().length>0);
+  // Tesseract.js v7 returns HEADERLESS TSV. CLI Tesseract often has a header.
+  // Previously we discarded the first data row as a header then returned [].
+  const expected = ['level','page_num','block_num','par_num','line_num','word_num',
+    'left','top','width','height','conf','text'];
+  const first = rows[0]?.split('\t') ?? [];
+  if(first.length<12) return [];
+  const header=first[0].trim().replace(/^\uFEFF/,'')==='level'?rows.shift()!.split('\t'):expected;
+  const column=(name:string)=>header.indexOf(name);
+  if (expected.some(k => column(k) === -1)) return [];
   for (const row of rows) {
     const cols = row.split('\t');
     if (cols[column('level')] !== '5') continue; // Tesseract word-level result
