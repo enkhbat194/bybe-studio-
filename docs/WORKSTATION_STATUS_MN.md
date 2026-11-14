@@ -1,30 +1,43 @@
-# BYBE Studio — шинэ ажлын дэлгэц / Үсгийн хэв маяг OCR
-Огноо: 2026-11-15
+# BYBE Studio — хэрэгжүүлэлтийн статус
 
-## Бодитоор бичсэн код
-- Одоо нэг дэлгэц: зүүн талд нэг мөр = нэг аудио хэсэг, ▶ / ↻ / ✎; баруун талд видео ба OCR текст дээр товших; доор хэсэгчилсэн хугацааны шугам.
-- Тухайн секундын бүртгэгдсэн аудио мөр автоматаар тодорно. Жагсаалтаас сонгоход видео тэр хугацаанд шилжинэ.
-- Хугацааны шугам дээр mouse drag хийж эхлэл/төгсгөл сонгоно; T дараад видеоны OCR бичвэр дээр товшвол бичвэр + хугацаа холбогдсон сегмент хадгалагдана. Баталгаажуулалтын төлөв үргэлж REVIEW_REQUIRED.
-- Хэрэв хугацаа сонгоогүй бол OCR текст дээр товшиход Clipboard-д хуулна (хөтчийн зөвшөөрлөөс хамаарна).
-- Үнэгүй Tesseract.js OCR-оор Чех/Англи текст ба координат авна; хэмжээг таамаглана. Локал OCR font-ийн bold/regular, өнгө болон хэлний ангиллыг найдвартай танихгүй — эдгээр талбар unknown хэвээр. Хэрэглэгч хэв маягийн дүрэм тогтооно. Gemini OCR нь зөвхөн зориуд сонговол ажиллана.
-- Хэрэглэгч нэг бичвэрийг czech_word / english_word / czech_sentence / english_sentence / ignore гэж ангилснаар хэв маягийн дүрэм үүсгэж зөвхөн тэр видеоны дараагийн OCR snapshot-уудад ашиглана.
-- Олон кадраас илэрсэн ижил бичвэрийг хэв маягаар нь давхардахаас хамгаалж зүүн талын нэгдсэн жагсаалтад OCR candidate хэлбэрээр хадгална.
-- Видеоны физик эхийг таслахгүйгээр 5 минутын virtual part + 2 секунд давхцах context-ийн metadata тооцож, дараагийн part руу шууд шилждэг.
-- Засварлах цонх Enter хадгалж, Esc хаана. Засвар хийсэн сегментийн QA-г reset хийнэ.
-- Хадгалалт localStorage + JSON экспорт/импорт; файлын name+size ID-гаар тусгаарлана. Эх медиа экспортод орохгүй.
-- Live Voice серверийн код хэвээр, default OFF.
-- Тест: npm run check, npm run test, npm run build (GitHub Actions).
+Огноо: 2026-11-15  
+Repository: https://github.com/enkhbat194/bybe-studio-  
+Салбар: `feature/typography-ocr-workstation` · Draft PR #1
 
-## Хийгдээгүй зүйлс — бэлэн гэж нэрлэж болохгүй
-1. 6 цагийн видео дээр **бие даасан** (browser хаагдсан ч) хэсэгчилсэн background worker / queue, pause/resume.
-2. Видео кадрын өөрчлөлтийг автоматаар илрүүлж олон OCR snapshot үүсгэх pipeline. Одоо хэрэглэгч кадр бүрээр хүсэлт өгнө. Tesseract хэлний traineddata-г анх интернетээс татаж болно.
-3. Жинхэнэ аудионы waveform peaks; одоогийн доод хэсэг сонгож болох **хугацааны шугам**.
-4. Whisper / Qwen3 / VAD / Czech forced alignment engine-ийн локал интеграц.
-5. FFmpeg WAV тайрах, SHA256, файлтай холбогдсон revision, SQLite, баталгаажсан APP_READY.
-6. Хөтөч MKV container codec-ийг дэмжихгүй байж болно. Local preview conversion хийх шаардлагатай.
-7. Chrome/Mac/iPhone бүх хөтөч дээр end-to-end manual acceptance test явуулаагүй.
+## Одоогийн кодод БИЙ
+- Монгол хэлтэй нэг дэлгэц, нэг аудио = нэг мөр; ▶, ↻, ✎, WAV export; тоглож буй аудионы мөр дагана
+- Хулганаар хугацаа сонгох → `T` → видеоны OCR текст дээр дарж холбоно; сонгосон ASR мөрийн бичвэрийг мөн нэг товшилтоор засна
+- Үнэгүй локал Tesseract.js OCR (Чех/Англи); кадрын текстийн байрлал, хэмжээ; нэг видеоны style rule
+- 5 минутын виртуал хэсгүүд; локал FFmpeg → sampled OCR кадр → хадгалагдсан background queue; pause/resume/restart recovery
+- Сонголтоор Python faster-whisper local ASR worker (`small`), бүх 5 минутын хэсэг дээр background queue; GPU тохирохгүй бол CPU
+- Том файлын 8 MB streamed upload/resume, FFprobe, source SHA256, сонголтоор MKV→MP4 preview
+- FFmpeg-ийн бодит PCM peak waveform, Popup fine-trim wave editor, non-destructive WAV revision
+- Хадгалсан WAV-ийг browser-д сонсох, 6 QA checkbox, revision hash/revision metadata нягтлах; баталгаажсан metadata-г APP_READY JSON болгон гаргах
+- LocalStorage + JSON экспорт/импорт; локал source/revision болон queue JSON persistence
+- Node.js server default localhost `127.0.0.1`; Live Voice module default OFF
+- GitHub CI: TypeScript + unit + build + synthetic-MP4→PCM→WAV→QA интеграцийн тест, Python syntax
+- Нээлттэй Draft PR: https://github.com/enkhbat194/bybe-studio-/pull/1, main/AI Studio 40 files untouched
 
-## Аюулгүй нэгдэл
-Google AI Studio-д байгаа 40 unpushed file-ийг дарахгүйн тулд feature/typography-ocr-workstation branch дээр ажилласан.
-Тус салбарын PR бол DRAFT. Үүнийг main руу шууд merge хийхээс өмнө Google AI Studio workspace-ийг ZIP backup хийж, diff-ийг тулгаж, хоёр талын өөрчлөлтийг нэгтгэх ёстой.
-GitHub: https://github.com/enkhbat194/bybe-studio-/pull/1
+## Хараахан ХИЙГДЭЭГҮЙ (бэлэн гэж зарлахгүй)
+- Бодит 6 цагийн Чех видео дээр Windows 11 + RTX2070Super end-to-end acceptance/accuracy/performance tests
+- WhisperX Чех forced alignment болон Qwen3-ASR загварыг Subtitle Edit-ээс шууд BYBE-д нэгтгэх
+- Чех/Англи ярианы дараалал, word_normal/slow/sentence_normal/slow-ийг бүрэн автоматаар **найдвартай** ангилах, ASR/OCR текстийг бүрэн автомат холбох
+- Өнгө, фонтын bold/regular-г локал дүрснээс найдвартай таньж ангилах
+- Хэсэг бүрийг ярианы яг чимээгүй зааг дээр уян хатан таслах; одоогоор үндсэн боловсруулах core 5 минут тогтмол, OCR/ASR санал нь REVIEW_REQUIRED
+- GPU/CPU хэрэглээний адаптив throttle; олон загварын чанарын benchmark
+- SQLite database болон transaction/recovery. Одоо atomic JSON файлууд ашиглана
+- MCP authenticated remote connection / GitHub AI Studio unpushed 40 files safe merge
+- Бодит WAV файлуудыг аппын бүх хичээлтэй bulk package болгон нэг дарж экспортлох
+
+## Үйлдлийн бодит зарчим
+1. «Файл нээх» → «Локал аудио холбох» (local_data дотор эх видеоны хамгаалалттай хуулбар)
+2. «Бүх видеоны OCR» болон сонголтоор «Бүх видеоны Whisper» дарна
+3. Эхний 5 минутын үр дүнг хэрэглэгч шалгаж байхад бусад хэсгүүд сервер ажилласаар боловсруулагдана
+4. Аудио хэсэг дээр T+OCR текст, ▶/↻/✎, FFmpeg WAV
+5. Шинэ WAV-ийг бодитоор сонсож 6 QA-г батална; APP_READY JSON зөвхөн баталгаажсаныг бүртгэнэ
+6. Сервер зогсвол локал queue-ийн manifest-аар unfinished part-аас үргэлжлүүлэх боломжтой, гэхдээ Windows дээр тасалдал сэргээлтийг тусгай тестээр баталгаажуулах ёстой
+
+## Баримт бичиг
+- [Windows quick start](QUICK_START_MN.md)
+- [Хөгжүүлэлтийн үе шат, шалгуур](ROADMAP_MN.md)
+- Draft PR: https://github.com/enkhbat194/bybe-studio-/pull/1
