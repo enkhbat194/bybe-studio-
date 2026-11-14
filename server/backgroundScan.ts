@@ -21,6 +21,8 @@ const jobs=new Map<string,ScanJob>();
 let active:string|null=null;
 let activeProcess:ChildProcess|null=null;
 let initialized=false;
+// Status can be updated by a different HTTP request while async OCR is running.
+const paused=(job:ScanJob):boolean=>jobs.get(job.id)?.status==='paused';
 const jobPath=(id:string)=>path.join(ROOT,id+'.json');
 const partPath=(id:string,index:number)=>path.join(ROOT,id+'-part-'+index+'.json');
 const now=()=>new Date().toISOString();
@@ -56,7 +58,7 @@ async function scanPart(job:ScanJob,file:string,coreStart:number,coreEnd:number,
  });
  try{
   for await(const chunk of child.stdout){
-   if(job.status==='paused'){child.kill();break;}
+   if(paused(job)){child.kill();break;}
    pending=Buffer.concat([pending,chunk as Buffer]);
    if(pending.length>12_000_000)throw Error('Видео frame stream хэт том.');
    for(;;){
@@ -67,7 +69,7 @@ async function scanPart(job:ScanJob,file:string,coreStart:number,coreEnd:number,
     pending=pending.subarray(b+2);
     const frameSec=Math.min(coreEnd,coreStart+count*job.sampleEvery);
     count++;
-    if(job.status==='paused'){child.kill();break;}
+    if(paused(job)){child.kill();break;}
     const blocks=await localOcr(jpg,dim.width,dim.height,frameSec);
     if(blocks.length){
      // Do not store repeated identical title cards; preserve the first evidence frame.
@@ -80,7 +82,7 @@ async function scanPart(job:ScanJob,file:string,coreStart:number,coreEnd:number,
    }
   }
   const exit=await exitPromise;
-  if(job.status!=='paused'&&exit!==0)throw Error('FFmpeg кадр уншихад алдаа: '+stderr);
+  if(!paused(job)&&exit!==0)throw Error('FFmpeg кадр уншихад алдаа: '+stderr);
   return frames;
  }catch(e){
   child.kill();await exitPromise.catch(()=>{});
@@ -100,17 +102,17 @@ async function runQueue(){
   const parts=planParts(source.meta.duration,5,2);
   const dim=await dimensions(source.filepath);
   while(job.nextPart<parts.length){
-   if(job.status==='paused')break;
+   if(paused(job))break;
    const p=parts[job.nextPart];
    const frames=await scanPart(job,source.filepath,p.coreStart,p.coreEnd,dim);
-   if(job.status==='paused')break;
+   if(paused(job))break;
    const tmp=partPath(job.id,job.nextPart)+'.tmp';
    await fsp.writeFile(tmp,JSON.stringify({partIndex:job.nextPart,coreStart:p.coreStart,coreEnd:p.coreEnd,frames}));
    await fsp.rename(tmp,partPath(job.id,job.nextPart));
    job.nextPart++;job.message='Хэсэг '+job.nextPart+'/'+parts.length+' OCR бэлэн';
    await save(job);
   }
-  if(job.status!=='paused'){job.status='complete';job.message='Бүх хэсгийн OCR дууссан';}
+  if(!paused(job)){job.status='complete';job.message='Бүх хэсгийн OCR дууссан';}
  }catch(e){
   job.status='error';job.message=e instanceof Error?e.message:'OCR боловсруулах алдаа';
  }finally{
