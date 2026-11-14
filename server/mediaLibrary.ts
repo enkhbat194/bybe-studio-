@@ -42,6 +42,9 @@ const sha256=async(file:string)=>new Promise<string>((resolve,reject)=>{
  const stream=fs.createReadStream(file),hash=createHash('sha256');
  stream.on('data',b=>hash.update(b));stream.on('error',reject);stream.on('end',()=>resolve(hash.digest('hex')));
 });
+export async function getLocalSource(id:string):Promise<{meta:SourceMeta;filepath:string}|null>{
+ const m=await load(id);return m&&m.state==='ready'?{meta:m,filepath:original(id)}:null;
+}
 async function load(id:string):Promise<SourceMeta|null>{
  if(!validId(id))return null;
  try{return JSON.parse(await fsp.readFile(manifestFile(id),'utf8')) as SourceMeta;}catch{return null;}
