@@ -250,7 +250,7 @@ export default function StudioWorkspace(){
   if(!editDraft.text.trim()||!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||(duration>0&&end>duration)){
    setStatus('Бичвэр эсвэл эхлэл/төгсгөлийн хугацаа буруу байна.');return;
   }
-  setSegments(old=>old.map(s=>s.id===editId?{...s,text:editDraft.text.trim(),start:n3(start),end:n3(end),kind:editDraft.kind,revisionId:undefined,checks:emptyQa(),qa:'REVIEW_REQUIRED' as const,updatedAt:new Date().toISOString()}:s).sort((a,b)=>a.start-b.start));
+  setSegments(old=>old.map(s=>s.id===editId?{...s,text:editDraft.text.trim(),start:n3(start),end:n3(end),kind:editDraft.kind,origin:undefined,matchStatus:undefined,revisionId:undefined,checks:emptyQa(),qa:'REVIEW_REQUIRED' as const,updatedAt:new Date().toISOString()}:s).sort((a,b)=>a.start-b.start));
   setEditId(null);setStatus('Засвар хадгалагдлаа. Өмнөх QA баталгаа хүчингүй.');
  }
  function posToTime(clientX:number){
@@ -313,7 +313,7 @@ export default function StudioWorkspace(){
   }else if(textMode&&selected){
    setSegments(old=>old.map(c=>c.id===selected.id?{
     ...c,text:b.text,kind:kindFromRole(role)==='unknown'?c.kind:kindFromRole(role),
-    frameSec:b.frameSec,ocrId:b.id,styleSignature:styleSignature(b),revisionId:undefined,checks:emptyQa(),
+    frameSec:b.frameSec,ocrId:b.id,styleSignature:styleSignature(b),origin:undefined,matchStatus:undefined,revisionId:undefined,checks:emptyQa(),
     qa:'REVIEW_REQUIRED' as const,updatedAt:new Date().toISOString()
    }:c));
    setTextMode(false);
