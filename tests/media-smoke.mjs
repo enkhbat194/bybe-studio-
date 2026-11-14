@@ -49,6 +49,12 @@ try{
  if(finished.state!=='ready'||finished.duration<2||!finished.hash)throw Error('media finalize not ready');
  const p=await json('/api/media/'+created.id+'/peaks?start=0&end=2&bins=128');
  if(p.peaks.length!==128||Math.max(...p.peaks)<=0)throw Error('real audio peaks not present');
+ const preview=await fetch(BASE+'/api/media/'+created.id+'/listen?start=0.6&end=1.8');
+ const previewWav=Buffer.from(await preview.arrayBuffer());
+ if(!preview.ok||previewWav.toString('ascii',0,4)!=='RIFF'||previewWav.length<5000)
+  throw Error('Independent listen WAV failed');
+ const denied=await fetch(BASE+'/api/media/'+created.id+'/listen?start=2&end=1');
+ if(denied.status!==400)throw Error('Invalid audio preview interval was accepted');
  const rev=await json('/api/media/'+created.id+'/export-wav','POST',{
   text:'růžová',kind:'word_normal',start:.2,end:1.2,clipId:'smoke-1'});
  if(!rev.id||!rev.sha256||rev.qa!=='REVIEW_REQUIRED')throw Error('WAV revision missing metadata');
@@ -71,7 +77,7 @@ try{
  const streamed=await fetch(BASE+'/api/media/'+created.id+'/revisions/'+rev.id+'/stream');
  const streamedWav=Buffer.from(await streamed.arrayBuffer());
  if(!streamed.ok||streamedWav.toString('ascii',0,4)!=='RIFF')throw Error('Inline QA WAV failed');
- console.log('PASS source upload, FFprobe, 128 real peaks, non-destructive Czech WAV, stream, SHA256 and six-check QA');
+ console.log('PASS MP4 source + waveform + independent live listen + bound check + WAV revision + hash + six QA');
 }finally{
  server?.kill();
  await fs.rm(temp,{recursive:true,force:true});
