@@ -416,6 +416,13 @@ export default function StudioWorkspace(){
     width:100/media.peaks.length+'%',
   }}/>
  )),[media.peaks]);
+ const ocrBlocks=frames.reduce((count,f)=>count+f.blocks.length,0);
+ const issues=[
+  ...(capabilities&&(!capabilities.ffmpeg||!capabilities.ffprobe)?['FFmpeg эсвэл FFprobe байхгүй. WAV, waveform, OCR хөдөлгүүр ажиллахгүй.']:[]),
+  ...(scan.job?.status==='error'?[scan.job.message.slice(0,165)]:[]),
+  ...(scan.job?.status==='complete'&&ocrBlocks===0?['OCR дууссан ч бичвэр 0 байна. «OCR дахин таних» товч дарна уу.']:[]),
+  ...(backgroundAsr.job?.status==='error'?[backgroundAsr.job.message.slice(0,165)]:[]),
+ ];
  const rows=segments.filter(s=>s.start<part.coreEnd&&s.end>part.coreStart);
  const videoAspect=video.current?.videoWidth&&video.current?.videoHeight?video.current.videoWidth/video.current.videoHeight:16/9;
 
@@ -456,38 +463,51 @@ export default function StudioWorkspace(){
    {scan.job?.status==='running'&&<button onClick={()=>void scan.pause()}>OCR түр зогсоох</button>}
    {scan.job?.status==='paused'&&<button onClick={()=>void scan.resume()}>OCR үргэлжлүүлэх</button>}
   </nav>}
-  {backgroundAsr.job&&<div className="bybe-message" role="status">
-   Whisper: {backgroundAsr.job.message} · {backgroundAsr.job.nextPart}/{backgroundAsr.job.totalParts} хэсэг
-  </div>}
-  {backgroundAsr.message&&<div className="bybe-message" role="status">{backgroundAsr.message}</div>}
-  {scan.job&&<div className="bybe-message" role="status">
-    Автомат OCR: {scan.job.message} · {scan.job.nextPart}/{scan.job.totalParts} хэсэг
-    {scan.job.status==='complete'?' · Дууссан':''}
-   </div>}
-  {scan.message&&<div className="bybe-message" role="status">{scan.message}</div>}
-  {media.status&&<div className="bybe-message" role="status">{media.status}
-    {media.lastRevision&&media.sourceId&&<a href={'/api/media/'+media.sourceId+'/revisions/'+media.lastRevision.id+'/download'} download>WAV татах: {media.lastRevision.filename}</a>}
-   </div>}
-  {status&&<div className="bybe-message" role="status">{status}<button aria-label="Мессеж хаах" onClick={()=>setStatus('')}><X size={15}/></button></div>}
-  {capabilities&&(!capabilities.ffmpeg||!capabilities.ffprobe)&&
-   <div className="bybe-dependency-warning" role="alert">
-    <strong>FFmpeg эсвэл FFprobe олдсонгүй.</strong> Локал WAV, waveform, автомат OCR ажиллахгүй.
-    Windows CMD дээр <code>ffmpeg -version</code> болон <code>ffprobe -version</code> командыг шалга.
-    FFmpeg-ийг PATH-д оруулсны дараа BYBE серверийг дахин асаана уу.
-   </div>}
-  {file&&<section className="bybe-process-strip" aria-label="Боловсруулалтын явц">
-   <div className="bybe-process-step done"><b>1</b><span>Видео нээгдсэн</span></div>
-   <div className={'bybe-process-step '+(media.sourceId?'done':media.working?'working':'pending')}>
-    <b>2</b><span>{media.sourceId?'Аудио бэлэн':media.working?'Файл холбож байна '+(media.progress??0)+'%':'Локал аудио бэлтгэх'}
-     {!media.sourceId&&!media.working&&<button onClick={()=>void media.upload()}>Дахин оролдох</button>}</span>
-   </div>
-   <div className={'bybe-process-step '+(scan.job?.status==='complete'?'done':scan.job?.status==='running'?'working':'pending')}>
-    <b>3</b><span>{scan.job?.status==='complete'?'OCR дууссан':scan.job?.status==='error'?'OCR алдаа — шалгах':
-     scan.job?'OCR: '+scan.job.nextPart+'/'+scan.job.totalParts+' хэсэг':'OCR эхлэхийг хүлээж байна'}
+  <section className="bybe-statusline" aria-label="Төслийн төлөв">
+   <div className="bybe-statusline-main">
+    <span className="bybe-status-indicator ready">●</span>
+    <strong>{file?'Видео: '+file.name:'Видео нээгээгүй'}</strong>
+    <span className="bybe-status-divider">·</span>
+    <span>{media.sourceId?'Аудио бэлэн':media.working?'Аудио бэлтгэж байна '+(media.progress??0)+'%':'Аудио хүлээгдэж байна'}</span>
+    <span className="bybe-status-divider">·</span>
+    <span className={scan.job?.status==='error'?'bybe-status-error':''}>
+     {scan.job?.status==='running'?'OCR ажиллаж байна: '+scan.job.nextPart+'/'+scan.job.totalParts:
+      scan.job?.status==='complete'?'OCR: '+(scan.job.blocksFound??ocrBlocks)+' бичвэр':
+      scan.job?.status==='error'?'OCR алдаа':'OCR хүлээгдэж байна'}
     </span>
+    <span className="bybe-status-divider">·</span>
+    <span>{segments.length} аудио хэсэг</span>
    </div>
-   <div className="bybe-process-step pending"><b>4</b><span>Сонсож шалгах · {segments.length} аудио, {frames.length} кадр</span></div>
-  </section>}
+   <div className="bybe-statusline-actions">
+    {media.working&&<button onClick={media.cancel}>Импорт зогсоох</button>}
+    {scan.job?.status==='running'&&<button onClick={()=>void scan.pause()}>OCR зогсоох</button>}
+    {scan.job?.status==='paused'&&<button onClick={()=>void scan.resume()}>OCR үргэлжлүүлэх</button>}
+    {file&&media.sourceId&&(scan.job?.status==='complete'||scan.job?.status==='error')&&
+     <button className="bybe-rescan" disabled={scan.busy}
+      onClick={()=>void scan.rescan()}>↻ OCR дахин таних</button>}
+    {backgroundAsr.job?.status==='error'&&<button onClick={()=>void backgroundAsr.resume()}>↻ Whisper дахин оролдох</button>}
+    <details className="bybe-diagnostics">
+     <summary>Төлөв ба алдаа {issues.length?'('+issues.length+')':''}</summary>
+     <div className="bybe-diagnostic-list">
+      {capabilities&&(!capabilities.ffmpeg||!capabilities.ffprobe)&&
+       <div className="bybe-diagnostic-error">FFmpeg/FFprobe олдсонгүй. Windows PATH-ийг шалга.</div>}
+      {scan.job&&<div><strong>OCR:</strong> {scan.job.message}</div>}
+      {backgroundAsr.job&&<div><strong>Whisper:</strong> {backgroundAsr.job.message}</div>}
+      {media.status&&<div><strong>Аудио:</strong> {media.status}</div>}
+      {scan.message&&<div>{scan.message}</div>}
+      {backgroundAsr.message&&<div>{backgroundAsr.message}</div>}
+      {status&&<div>{status}</div>}
+      {media.lastRevision&&media.sourceId&&<a
+       href={'/api/media/'+media.sourceId+'/revisions/'+media.lastRevision.id+'/download'} download>
+       WAV татах: {media.lastRevision.filename}</a>}
+     </div>
+    </details>
+   </div>
+  </section>
+  {issues.length>0&&<div className="bybe-alert" role="alert">
+   <strong>Шалгах шаардлагатай:</strong> {issues[0]}
+   {issues.length>1?' · Бусад '+(issues.length-1)+' асуудлыг «Төлөв ба алдаа» цэсээс үзнэ.':''}
+  </div>}
   <main className="bybe-core">
    <section className="bybe-transcript panel">
     <header><h2>Текст · аудионы жагсаалт</h2><span>{rows.length} аудио · {unlinked.length} OCR · QA {reviewCount}</span></header>
