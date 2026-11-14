@@ -39,11 +39,11 @@ def transcribe(command: dict, model_cache: dict) -> dict:
         raise RuntimeError("faster-whisper суулгаагүй: py -3.11 -m pip install faster-whisper") from exc
 
     model_name = os.getenv("BYBE_ASR_MODEL", "small")
-    selected = os.getenv("BYBE_ASR_DEVICE", "auto")
+    # CPU is the reliable out-of-box mode on Windows; a CUDA-capable GPU alone does\n    # not provide the required cublas64_12.dll / cuDNN runtime. Opt into cuda explicitly.\n    selected = os.getenv("BYBE_ASR_DEVICE", "cpu")
     if selected not in {"auto", "cpu", "cuda"}:
         selected = "auto"
     if model_cache.get("model") is None:
-        device = "cuda" if selected in {"auto", "cuda"} else "cpu"
+        device = "cuda" if selected == "cuda" else "cpu"
         try:
             model_cache["model"] = WhisperModel(model_name, device=device,
                                                compute_type="int8_float16" if device == "cuda" else "int8")
