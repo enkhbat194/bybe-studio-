@@ -14,9 +14,15 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Windows often defaults to cp1252 even though Node sends JSON Lines in UTF-8.
+# A single Mongolian error message previously crashed the entire worker.
+for stream in (sys.stdin, sys.stdout, sys.stderr):
+    if hasattr(stream, "reconfigure"):
+        stream.reconfigure(encoding="utf-8", errors="replace")
+
 
 def emit(payload: dict) -> None:
-    sys.stdout.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    sys.stdout.write(json.dumps(payload, ensure_ascii=True) + "\n")
     sys.stdout.flush()
 
 
