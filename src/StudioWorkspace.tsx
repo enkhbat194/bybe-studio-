@@ -39,6 +39,7 @@ export default function StudioWorkspace(){
  const [file,setFile]=useState<File|null>(null);
  const [src,setSrc]=useState('');
  const [sourceKey,setSourceKey]=useState('');
+ const [hydratedKey,setHydratedKey]=useState('');
  const [duration,setDuration]=useState(0);
  const [current,setCurrent]=useState(0);
  const [segments,setSegments]=useState<Segment[]>([]);
@@ -86,14 +87,15 @@ export default function StudioWorkspace(){
   setFrames(Array.isArray(data.frames)?data.frames.filter(x=>typeof x.frameSec==='number'&&Array.isArray(x.blocks)):[]);
   setStyleRules(Array.isArray(data.styleRules)?data.styleRules:[]);
   setSelectedRange(null);setSelectedId(null);setPartIndex(0);setCurrent(0);setLoop(null);
+  setHydratedKey(sourceKey);
  },[sourceKey]);
  useEffect(()=>{
-  if(!sourceKey)return;
+  if(!sourceKey||hydratedKey!==sourceKey)return;
   try{
    // A bounded browser cache. Full video processing will require SQLite on the local worker.
    localStorage.setItem(keyPrefix+':'+sourceKey,JSON.stringify({segments,frames:frames.slice(-120),styleRules}));
   }catch{setStatus('Төхөөрөмжийн түр санах ой дүүрсэн. JSON нөөцлөлт хийгээрэй.');}
- },[segments,frames,styleRules,sourceKey]);
+ },[segments,frames,styleRules,sourceKey,hydratedKey]);
  useEffect(()=>{
   if(!activeId||activeId===lastActive.current||manualList.current||editId)return;
   lastActive.current=activeId;
@@ -150,7 +152,7 @@ export default function StudioWorkspace(){
   if(!editDraft.text.trim()||!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||(duration>0&&end>duration)){
    setStatus('Бичвэр эсвэл эхлэл/төгсгөлийн хугацаа буруу байна.');return;
   }
-  setSegments(old=>old.map(s=>s.id===editId?{...s,text:editDraft.text.trim(),start:n3(start),end:n3(end),kind:editDraft.kind,qa:'REVIEW_REQUIRED',updatedAt:new Date().toISOString()}:s).sort((a,b)=>a.start-b.start));
+  setSegments(old=>old.map(s=>s.id===editId?{...s,text:editDraft.text.trim(),start:n3(start),end:n3(end),kind:editDraft.kind,qa:'REVIEW_REQUIRED' as const,updatedAt:new Date().toISOString()}:s).sort((a,b)=>a.start-b.start));
   setEditId(null);setStatus('Засвар хадгалагдлаа. Өмнөх QA баталгаа хүчингүй.');
  }
  function posToTime(clientX:number){
@@ -182,6 +184,8 @@ export default function StudioWorkspace(){
  }
  async function captureFrame(){
   const v=video.current;if(!v?.videoWidth)return setStatus('Дүрстэй видео файл нээнэ үү.');
+  v.pause();
+  const frameSec=v.currentTime;
   const canvas=document.createElement('canvas');canvas.width=Math.min(1280,v.videoWidth);
   canvas.height=Math.round(v.videoHeight*canvas.width/v.videoWidth);
   const ctx=canvas.getContext('2d');if(!ctx)return;
@@ -189,12 +193,12 @@ export default function StudioWorkspace(){
   setBusy(true);
   try {
    const resp=await fetch('/api/ocr-layout',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({imageBase64:canvas.toDataURL('image/jpeg',.87).split(',')[1],mimeType:'image/jpeg',frameSec:v.currentTime})});
+    body:JSON.stringify({imageBase64:canvas.toDataURL('image/jpeg',.87).split(',')[1],mimeType:'image/jpeg',frameSec})});
    const data=await resp.json();
    if(!resp.ok)throw new Error(data.error||'OCR алдаа');
    const blocks=(Array.isArray(data.blocks)?data.blocks:[])
-    .map((b:unknown,i:number)=>validateBlock(b,v.currentTime,i)).filter((b:OcrBlock|null):b is OcrBlock=>b!==null);
-   setFrames(old=>[...old.filter(f=>Math.abs(f.frameSec-v.currentTime)>0.5),{frameSec:v.currentTime,blocks}].sort((a,b)=>a.frameSec-b.frameSec));
+    .map((b:unknown,i:number)=>validateBlock(b,frameSec,i)).filter((b:OcrBlock|null):b is OcrBlock=>b!==null);
+   setFrames(old=>[...old.filter(f=>Math.abs(f.frameSec-frameSec)>0.5),{frameSec,blocks}].sort((a,b)=>a.frameSec-b.frameSec));
    setStatus(blocks.length+' бичвэр илэрлээ. Сонголт буруу бол хэв маягийн дүрмийг засна уу.');
   }catch(e){setStatus(e instanceof Error?e.message:'OCR алдаа');}
   finally{setBusy(false);}
