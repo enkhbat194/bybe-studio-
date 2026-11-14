@@ -4,6 +4,7 @@ import { planParts, owningPart } from './lib/parts';
 import { effectiveRole, roleLabel, sameScreenText, styleRuleFromBlock, styleSignature, validateBlock, type FrameResult, type OcrBlock, type StyleRule, type TextRole } from './lib/typography';
 import { useMediaEngine } from './useMediaEngine';
 import { useBackgroundScan } from './useBackgroundScan';
+import { useBackgroundAsr, type AsrCandidate } from './useBackgroundAsr';
 import ClipWaveEditor from './ClipWaveEditor';
 import './StudioWorkspace.css';
 
@@ -342,6 +343,20 @@ export default function StudioWorkspace(){
   });
  },[]);
  const scan=useBackgroundScan(media.sourceId,mergeFrames);
+ const receiveAsr=useCallback((items:AsrCandidate[])=>{
+  setSegments(old=>{
+   const known=old.slice();
+   for(const entry of items){
+    if(typeof entry.text!=='string'||!Number.isFinite(entry.start)||!Number.isFinite(entry.end)||entry.end<=entry.start)continue;
+    if(known.some(s=>Math.abs(s.start-entry.start)<.4&&Math.abs(s.end-entry.end)<.4))continue;
+    known.push({id:crypto.randomUUID(),sourceKey,text:entry.text,kind:'unknown',
+      start:n3(entry.start),end:n3(entry.end),frameSec:null,ocrId:null,styleSignature:null,
+      qa:'REVIEW_REQUIRED',updatedAt:new Date().toISOString()});
+   }
+   return known.sort((a,b)=>a.start-b.start);
+  });
+ },[sourceKey]);
+ const backgroundAsr=useBackgroundAsr(media.sourceId,receiveAsr);
  useEffect(()=>{if(!duration && media.sourceDuration>0)setDuration(media.sourceDuration);},[duration,media.sourceDuration]);
  const pct=(sec:number)=>100*(sec-startOfView)/Math.max(.001,endOfView-startOfView);
  const soundBars=useMemo(()=>media.peaks.map((amplitude,i)=>(
@@ -370,6 +385,11 @@ export default function StudioWorkspace(){
    </button>}
    {media.working&&<button onClick={media.cancel}>Импортыг зогсоох</button>}
    <button onClick={()=>void captureFrame()} disabled={!src||busy}><ScanText size={17}/> {busy?'Уншиж байна…':'Кадрын OCR'}</button>
+   <button onClick={()=>void backgroundAsr.start()} disabled={!media.sourceId||backgroundAsr.busy||!!backgroundAsr.job&&backgroundAsr.job.status!=='error'}>
+    <AudioLines size={17}/> Бүх видеоны Whisper
+   </button>
+   {backgroundAsr.job?.status==='running'&&<button onClick={()=>void backgroundAsr.pause()}>ASR түр зогсоох</button>}
+   {backgroundAsr.job?.status==='paused'&&<button onClick={()=>void backgroundAsr.resume()}>ASR үргэлжлүүлэх</button>}
    <button onClick={()=>void transcribePart()} disabled={!media.sourceId||asrBusy}>
     <AudioLines size={17}/> {asrBusy?'Whisper ажиллаж байна…':'Энэ хэсгийн яриа таних'}
    </button>
@@ -380,6 +400,10 @@ export default function StudioWorkspace(){
    {scan.job?.status==='paused'&&<button onClick={()=>void scan.resume()}>OCR үргэлжлүүлэх</button>}
    <span className="bybe-top-status">{file?.name??'Эх видео сонгоогүй'} · {ocrMode}</span>
   </header>
+  {backgroundAsr.job&&<div className="bybe-message" role="status">
+   Whisper: {backgroundAsr.job.message} · {backgroundAsr.job.nextPart}/{backgroundAsr.job.totalParts} хэсэг
+  </div>}
+  {backgroundAsr.message&&<div className="bybe-message" role="status">{backgroundAsr.message}</div>}
   {scan.job&&<div className="bybe-message" role="status">
     Автомат OCR: {scan.job.message} · {scan.job.nextPart}/{scan.job.totalParts} хэсэг
     {scan.job.status==='complete'?' · Дууссан':''}
