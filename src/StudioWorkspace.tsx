@@ -374,7 +374,11 @@ export default function StudioWorkspace(){
  const mergeFrames=useCallback((newFrames:FrameResult[])=>{
   setFrames(old=>{
    const all=new Map(old.map(f=>[f.frameSec.toFixed(2),f]));
-   for(const frame of newFrames)if(!all.has(frame.frameSec.toFixed(2)))all.set(frame.frameSec.toFixed(2),frame);
+   for(const frame of newFrames){
+    const key=frame.frameSec.toFixed(2),prior=all.get(key);
+    // A re-scan with corrected OCR must replace stale empty or watermark-only frames.
+    if(!prior||frame.blocks.length>prior.blocks.length)all.set(key,frame);
+   }
    return Array.from(all.values()).sort((a,b)=>a.frameSec-b.frameSec);
   });
  },[]);
