@@ -103,3 +103,11 @@
 .bybe-dependency-warning{margin-top:10px;padding:12px 15px;border:1px solid #e2a451;border-radius:9px;background:#432911;color:#ffdfaa;font-size:13px;line-height:1.6}
 .bybe-dependency-warning strong{display:block;font-size:14px;color:#ffe3b0;margin-bottom:3px}
 .bybe-dependency-warning code{background:#25180e;border-radius:3px;padding:2px 4px;color:#fff1d6}
+
+.bybe-extra-tools{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:7px;
+ border:1px solid #315474;background:#102438;border-radius:10px;padding:10px 12px}
+.bybe-extra-tools button{border:1px solid #3e5c7d;background:#1b3550;border-radius:7px;color:#e5f3ff;padding:7px 10px;
+ display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer}
+.bybe-extra-tools button:disabled{opacity:.42;cursor:not-allowed}
+.bybe-short-status{font-size:12px;color:#9fc2df;margin-left:auto;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:600px){.bybe-short-status{display:none}.bybe-extra-tools button{font-size:11px}}
