@@ -76,6 +76,7 @@ export default function StudioWorkspace(){
  const [ocrMode,setOcrMode]=useState('Локал OCR');
  const [capabilities,setCapabilities]=useState<{ffmpeg:boolean;ffprobe:boolean;python:boolean}|null>(null);
  const [asrBusy,setAsrBusy]=useState(false);
+ const [toolsOpen,setToolsOpen]=useState(false);
  const [zoom,setZoom]=useState(1);
  const video=useRef<HTMLVideoElement|null>(null);
  const seekEnd=useRef<number|null>(null);
@@ -408,17 +409,23 @@ export default function StudioWorkspace(){
    <input ref={filePicker} hidden type="file" accept="video/*,audio/*,.mkv,.mp4,.mp3,.wav,.webm" onChange={e=>openFile(e.target.files?.[0])}/>
    <input ref={importPicker} hidden type="file" accept="application/json,.json" onChange={e=>void importJson(e.target.files?.[0])}/>
    <button onClick={()=>filePicker.current?.click()}><FolderOpen size={17}/> Файл нээх</button>
-   <button onClick={()=>importPicker.current?.click()}><FileVideo size={17}/> Бүртгэл оруулах</button>
-   <button onClick={exportJson}><Download size={17}/> JSON экспорт</button>
-   {media.sourceId&&<button onClick={()=>void downloadAppReady()}>APP_READY JSON</button>}
+   <button onClick={exportJson}><Download size={17}/> Бүртгэл экспортлох</button>
+   {media.sourceId&&<button onClick={()=>void downloadAppReady()}>Баталгаажсан аудио</button>}
+   <button onClick={()=>setToolsOpen(v=>!v)} aria-expanded={toolsOpen} aria-controls="bybe-extra-tools">
+    <Settings2 size={17}/> Хэрэгслүүд {toolsOpen?'▲':'▼'}
+   </button>
+   {file&&<span className="bybe-short-status">{media.sourceId?'Аудио бэлэн':media.working?'Файл бэлтгэж байна '+(media.progress??0)+'%':'Файл нээгдсэн'} · {ocrMode}</span>}
+  </header>
+  {toolsOpen&&<nav id="bybe-extra-tools" className="bybe-extra-tools" aria-label="Нэмэлт хэрэгслүүд">
+   <button onClick={()=>importPicker.current?.click()}><FileVideo size={17}/> JSON бүртгэл оруулах</button>
    <button onClick={()=>void media.upload()} disabled={!file||media.working||!!media.sourceId}>
-    <Save size={17}/> {media.working&&media.progress!==null?'Импорт '+media.progress+'%':media.sourceId?'FFmpeg бэлэн':'Локал аудио холбох'}
+    <Save size={17}/> {media.sourceId?'Аудио бэлэн':'Локал аудио холбох'}
    </button>
    {media.sourceId&&<button onClick={()=>void media.preparePreview()} disabled={media.working}>
     <FileVideo size={17}/> MKV → MP4 үзэх
    </button>}
    {media.working&&<button onClick={media.cancel}>Импортыг зогсоох</button>}
-   <button onClick={()=>void captureFrame()} disabled={!src||busy}><ScanText size={17}/> {busy?'Уншиж байна…':'Кадрын OCR'}</button>
+   <button onClick={()=>void captureFrame()} disabled={!src||busy}><ScanText size={17}/> Кадрын OCR</button>
    <button onClick={()=>void backgroundAsr.start()} disabled={!media.sourceId||backgroundAsr.busy||!!backgroundAsr.job&&backgroundAsr.job.status!=='error'}>
     <AudioLines size={17}/> Бүх видеоны Whisper
    </button>
@@ -432,8 +439,7 @@ export default function StudioWorkspace(){
    </button>
    {scan.job?.status==='running'&&<button onClick={()=>void scan.pause()}>OCR түр зогсоох</button>}
    {scan.job?.status==='paused'&&<button onClick={()=>void scan.resume()}>OCR үргэлжлүүлэх</button>}
-   <span className="bybe-top-status">{file?.name??'Эх видео сонгоогүй'} · {ocrMode}</span>
-  </header>
+  </nav>
   {backgroundAsr.job&&<div className="bybe-message" role="status">
    Whisper: {backgroundAsr.job.message} · {backgroundAsr.job.nextPart}/{backgroundAsr.job.totalParts} хэсэг
   </div>}
