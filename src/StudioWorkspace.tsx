@@ -162,7 +162,7 @@ export default function StudioWorkspace(){
    if(e.ctrlKey||e.metaKey||e.altKey)return;
    const el=e.target as HTMLElement|null;
    if(editId){
-    if(e.key==='Enter'&&!el?.matches('textarea')){e.preventDefault();saveEdit();}
+    if(e.key==='Enter'&&!el?.matches('textarea,input,select,button,audio,[contenteditable="true"]')){e.preventDefault();saveEdit();}
     if(e.key==='Escape'){e.preventDefault();setEditId(null);}
     return;
    }
@@ -241,6 +241,7 @@ export default function StudioWorkspace(){
   }catch(e){setStatus(e instanceof Error?e.message:'Экспортын алдаа');}
  }
  function beginEdit(s:Segment){
+  video.current?.pause();
   setSelectedId(s.id);setEditId(s.id);setEditDraft({text:s.text,start:String(s.start),end:String(s.end),kind:s.kind});setQaChecks(s.checks||emptyQa());
   setLoop(null);
  }
@@ -685,8 +686,7 @@ export default function StudioWorkspace(){
      <button className="primary" disabled={!Object.values(qaChecks).every(Boolean)} onClick={()=>void verifyEditing()}>
       ✓ 6 шалгалтаар батлах</button>
     </div>}
-    <div className="bybe-actions"><button onClick={()=>play(editing,false)}><Play size={16}/> Сонсох</button><button onClick={()=>play(editing,true)}><Repeat2 size={16}/> Давтах</button>
-      <button className="primary" onClick={saveEdit}><Save size={16}/> Enter · Хадгалах</button></div>
+    <div className="bybe-actions"><button className="primary" onClick={saveEdit}><Save size={16}/> Засвар хадгалах</button></div>
     <p className="bybe-help">Хугацаа/текст засахад QA баталгаа хүчингүй болно. Esc — хаах.</p>
    </section>
   </div>}
