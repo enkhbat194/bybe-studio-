@@ -465,6 +465,7 @@ export default function StudioWorkspace(){
   }}/>
  )),[media.peaks]);
  const ocrBlocks=frames.reduce((count,f)=>count+f.blocks.length,0);
+ const estimated=segments.filter(s=>s.origin==='VISUAL_AUDIO_ESTIMATE').length;
  const issues=[
   ...(capabilities&&(!capabilities.ffmpeg||!capabilities.ffprobe)?['FFmpeg эсвэл FFprobe байхгүй. WAV, waveform, OCR хөдөлгүүр ажиллахгүй.']:[]),
   ...(scan.job?.status==='error'?[scan.job.message.slice(0,165)]:[]),
@@ -525,7 +526,7 @@ export default function StudioWorkspace(){
       scan.job?.status==='error'?'OCR алдаа':'OCR хүлээгдэж байна'}
     </span>
     <span className="bybe-status-divider">·</span>
-    <span>{segments.length} аудио хэсэг</span>
+    <span>{segments.length} аудио санал{estimated?' · '+estimated+' урьдчилсан':''}</span>
    </div>
    <div className="bybe-statusline-actions">
     {media.working&&<button onClick={media.cancel}>Импорт зогсоох</button>}
@@ -559,14 +560,14 @@ export default function StudioWorkspace(){
   </div>}
   <main className="bybe-core">
    <section className="bybe-transcript panel">
-    <header><h2>Текст ба аудионы хэсгүүд</h2><span>{rows.length} аудио · {unlinked.length} OCR · QA {reviewCount}</span></header>
+    <header><h2>Автомат холбосон аудио</h2><span>{rows.length} хэсэг · {reviewCount} шалгах</span></header>
     <div className="bybe-rows" ref={listRef} onWheel={()=>{manualList.current=true;window.setTimeout(()=>manualList.current=false,3000);}}>
      {rows.length===0&&unlinked.length===0?<div className="bybe-empty">
-      <strong>{!file?'Эх видеогоо нээнэ үү.':!media.sourceId?'Видео бэлтгэж байна…':scan.job?.status==='running'?'OCR кадруудыг уншиж байна…':'Энэ хэсгийн текст хараахан илрээгүй.'}</strong>
+      <strong>{!file?'Эх видеогоо нээнэ үү.':!media.sourceId?'Видео бэлтгэж байна…':scan.job?.status==='running'?'Текст болон аудионы санал бэлтгэж байна…':'Энэ хэсгийн аудио санал хараахан алга.'}</strong>
       <p>{!file?'Эх видео нээгээд эхний OCR-ийг автоматаар эхлүүлнэ.':
        !media.sourceId?'BYBE эх файлыг локал серверт хуулж, FFmpeg-ээр аудионы долгион бэлтгэнэ.':
-       scan.job?.status==='running'?'Таньсан кадр бүрийн текст энд шууд нэмэгдэнэ. Бусад кадрыг BYBE цаана нь үргэлжлүүлнэ.':
-       'Тухайн кадрыг сонгоод «Кадрын OCR» дараарай. Текст гармагц хугацааны шугамаас хэсэг сонгон T дарж холбоно.'}</p>
+       scan.job?.status==='running'?'OCR илрүүлэх + FFmpeg аудионы идэвхтэй хэсгүүдээр автоматаар холбож байна. Зөвхөн шалгахад оролцоно.':
+       'Whisper суусан бол яриаг автоматаар танина. Суулаагүй үед OCR + waveform холболт урьдчилсан санал гаргах бөгөөд буруу заагийг засаж болно.'}</p>
      </div>:
       rows.map(s=><div key={s.id} ref={r=>{rowRefs.current[s.id]=r;}} className={'bybe-row '+(activeId===s.id?'is-current ':'')+(selectedId===s.id?'is-selected':'')}>
        <button className="bybe-row-text" onClick={()=>{setSelectedId(s.id);const v=video.current;if(v){v.currentTime=s.start;v.pause();}}} title="Видеог энэ хэсэгт очуулах">
@@ -580,13 +581,16 @@ export default function StudioWorkspace(){
          aria-label={s.text+' WAV үүсгэх'} onClick={()=>void exportClip(s)}><Download size={15}/></button>
        </div>
       </div>)}
-     {unlinked.map(b=><div key={b.id} className="bybe-ocr-row">
+     {unlinked.length>0&&<details className="bybe-raw-ocr">
+      <summary>Түүхий OCR бичвэр ({unlinked.length}) · Автомат холболтод ороогүй</summary>
+      {unlinked.map(b=><div key={b.id} className="bybe-ocr-row">
       <button className="bybe-row-text" onClick={()=>{const v=video.current;if(v){v.pause();v.currentTime=b.frameSec;}toPartAt(b.frameSec);}} title="Энэ бичвэр гарсан кадрт очих">
        <span>{b.text}</span><small>OCR · {roleLabel(effectiveRole(b,styleRules))} · {time(b.frameSec)}</small>
       </button>
       <button title="Хэсэг сонгосны дараа энэ бичвэртэй холбох" onClick={()=>assignBlock(b)}>{selectedRange?'＋':'⧉'}</button>
       <button title="Хэв маягийг ангилах" onClick={()=>{setStyleTarget(b);setStyleRole(effectiveRole(b,styleRules));}}><Settings2 size={14}/></button>
      </div>)}
+     </details>}
     </div>
    </section>
    <section className="bybe-preview panel">
