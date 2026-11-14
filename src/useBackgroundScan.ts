@@ -16,10 +16,11 @@ export function useBackgroundScan(sourceId:string,addFrames:(frames:FrameResult[
  const [job,setJob]=useState<ScanJob|null>(null),[message,setMessage]=useState('');
  const [busy,setBusy]=useState(false);
  const after=useRef(-1);
+ const lastLive=useRef('');
  const frameHandler=useRef(addFrames);
  frameHandler.current=addFrames;
  useEffect(()=>{
-  after.current=-1;setJob(null);setMessage('');
+  after.current=-1;lastLive.current='';setJob(null);setMessage('');
   if(!sourceId)return;
   let alive=true;
   let jobId=localStorage.getItem('bybe-ocr-job:'+sourceId)||'';
@@ -37,6 +38,15 @@ export function useBackgroundScan(sourceId:string,addFrames:(frames:FrameResult[
      const fresh=parts.flatMap(part=>part.frames);
      if(fresh.length)frameHandler.current(fresh);
      if(parts.length)after.current=parts[parts.length-1].partIndex;
+    }
+    if(j.status==='running'){
+     const snapshot=await api('/api/scan/'+jobId+'/live') as {partIndex:number;version:number;frames:FrameResult[]};
+     if(!alive)return;
+     const id=snapshot.partIndex+':'+snapshot.version;
+     if(snapshot.version>0&&lastLive.current!==id){
+      lastLive.current=id;
+      if(Array.isArray(snapshot.frames)&&snapshot.frames.length)frameHandler.current(snapshot.frames);
+     }
     }
    }catch(e){
     if(!alive)return;
