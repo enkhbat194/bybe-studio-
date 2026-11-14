@@ -17,7 +17,8 @@ function launchWorker():ChildProcessWithoutNullStreams{
  const windows=process.platform==='win32';
  const cmd=process.env.BYBE_PYTHON || (windows?'py':'python3');
  const args=[...(windows&&cmd==='py'?['-3.11']:[]),path.join(process.cwd(),'scripts','local_asr_worker.py')];
- const child=spawn(cmd,args,{windowsHide:true,stdio:['pipe','pipe','pipe']});
+ const child=spawn(cmd,args,{windowsHide:true,stdio:['pipe','pipe','pipe'],
+  env:{...process.env,PYTHONUTF8:'1',PYTHONIOENCODING:'utf-8'}});
  worker=child;stdoutBuffer='';stderrTail='';
  child.stdout.on('data',(chunk:Buffer)=>{
   stdoutBuffer+=chunk.toString('utf8');
