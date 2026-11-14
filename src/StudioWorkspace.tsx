@@ -399,8 +399,9 @@ export default function StudioWorkspace(){
    const all=new Map(old.map(f=>[f.frameSec.toFixed(2),f]));
    for(const frame of newFrames){
     const key=frame.frameSec.toFixed(2),prior=all.get(key);
-    // A re-scan with corrected OCR must replace stale empty or watermark-only frames.
-    if(!prior||frame.blocks.length>prior.blocks.length)all.set(key,frame);
+    // A deliberate re-scan may validly contain FEWER text regions after noise filtering.
+    // Replace old blocks for the same timestamp, rather than preserving the noisiest output.
+    if(!prior||JSON.stringify(prior.blocks)!==JSON.stringify(frame.blocks))all.set(key,frame);
    }
    return Array.from(all.values()).sort((a,b)=>a.frameSec-b.frameSec);
   });
