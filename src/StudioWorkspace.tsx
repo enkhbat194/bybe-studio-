@@ -76,7 +76,7 @@ export default function StudioWorkspace(){
  const [loop,setLoop]=useState<string|null>(null);
  const [partIndex,setPartIndex]=useState(0);
  const [ocrMode,setOcrMode]=useState('Локал OCR');
- const [capabilities,setCapabilities]=useState<{ffmpeg:boolean;ffprobe:boolean;python:boolean}|null>(null);
+ const [capabilities,setCapabilities]=useState<{ffmpeg:boolean;ffprobe:boolean;python:boolean;fasterWhisper:boolean}|null>(null);
  const [asrBusy,setAsrBusy]=useState(false);
  const [toolsOpen,setToolsOpen]=useState(false);
  const [zoom,setZoom]=useState(1);
@@ -454,12 +454,13 @@ export default function StudioWorkspace(){
    </button>}
    {media.working&&<button onClick={media.cancel}>Импортыг зогсоох</button>}
    <button onClick={()=>void captureFrame()} disabled={!src||busy}><ScanText size={17}/> Кадрын OCR</button>
-   <button onClick={()=>void backgroundAsr.start()} disabled={!media.sourceId||backgroundAsr.busy||!!backgroundAsr.job&&backgroundAsr.job.status!=='error'}>
+   {capabilities&&!capabilities.fasterWhisper&&<span className="bybe-asr-install-note">Whisper суулгаагүй: <code>INSTALL_WHISPER_WINDOWS.bat</code> ажиллуулаад серверээ дахин асаана.</span>}
+   <button onClick={()=>void backgroundAsr.start()} title={capabilities&&!capabilities.fasterWhisper?'Whisper-ийн Python сан суулгагдаагүй байна':''} disabled={!media.sourceId||backgroundAsr.busy||capabilities?.fasterWhisper===false||!!backgroundAsr.job&&backgroundAsr.job.status!=='error'}>
     <AudioLines size={17}/> Бүх видеоны Whisper
    </button>
    {backgroundAsr.job?.status==='running'&&<button onClick={()=>void backgroundAsr.pause()}>ASR түр зогсоох</button>}
    {backgroundAsr.job?.status==='paused'&&<button onClick={()=>void backgroundAsr.resume()}>ASR үргэлжлүүлэх</button>}
-   <button onClick={()=>void transcribePart()} disabled={!media.sourceId||asrBusy}>
+   <button onClick={()=>void transcribePart()} title={capabilities&&!capabilities.fasterWhisper?'INSTALL_WHISPER_WINDOWS.bat хэрэгтэй':''} disabled={!media.sourceId||asrBusy||capabilities?.fasterWhisper===false}>
     <AudioLines size={17}/> {asrBusy?'Whisper ажиллаж байна…':'Энэ хэсгийн яриа таних'}
    </button>
    <button disabled={!media.sourceId||scan.busy||!!scan.job&&scan.job.status!=='error'} onClick={()=>void scan.start()}>
