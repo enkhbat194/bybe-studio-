@@ -74,6 +74,7 @@ export default function StudioWorkspace(){
  const [loop,setLoop]=useState<string|null>(null);
  const [partIndex,setPartIndex]=useState(0);
  const [ocrMode,setOcrMode]=useState('Локал OCR');
+ const [capabilities,setCapabilities]=useState<{ffmpeg:boolean;ffprobe:boolean;python:boolean}|null>(null);
  const [asrBusy,setAsrBusy]=useState(false);
  const [zoom,setZoom]=useState(1);
  const video=useRef<HTMLVideoElement|null>(null);
@@ -107,7 +108,11 @@ export default function StudioWorkspace(){
  },[frames,styleRules]);
  const unlinked=collected.filter(b=>b.frameSec>=part.coreStart&&b.frameSec<part.coreEnd&&!segments.some(s=>s.ocrId===b.id||s.text===b.text&&Math.abs((s.frameSec??-100)-b.frameSec)<10));
 
- useEffect(()=>{fetch('/api/health').then(r=>r.json()).then(v=>setOcrMode(v.ocrEngine==='gemini-opt-in'?'Gemini OCR (сонголт)':'Локал OCR · үнэгүй')).catch(()=>{});},[]);
+ useEffect(()=>{
+  fetch('/api/health').then(r=>r.json())
+   .then(v=>setOcrMode(v.ocrEngine==='gemini-opt-in'?'Gemini OCR (сонголт)':'Локал OCR · үнэгүй')).catch(()=>{});
+  fetch('/api/system/capabilities').then(r=>r.json()).then(setCapabilities).catch(()=>{});
+ },[]);
  useEffect(()=>{return ()=>{if(src)URL.revokeObjectURL(src);};},[src]);
  useEffect(()=>{
   if(!sourceKey)return;
@@ -442,6 +447,12 @@ export default function StudioWorkspace(){
     {media.lastRevision&&media.sourceId&&<a href={'/api/media/'+media.sourceId+'/revisions/'+media.lastRevision.id+'/download'} download>WAV татах: {media.lastRevision.filename}</a>}
    </div>}
   {status&&<div className="bybe-message" role="status">{status}<button aria-label="Мессеж хаах" onClick={()=>setStatus('')}><X size={15}/></button></div>}
+  {capabilities&&(!capabilities.ffmpeg||!capabilities.ffprobe)&&
+   <div className="bybe-dependency-warning" role="alert">
+    <strong>FFmpeg эсвэл FFprobe олдсонгүй.</strong> Локал WAV, waveform, автомат OCR ажиллахгүй.
+    Windows CMD дээр <code>ffmpeg -version</code> болон <code>ffprobe -version</code> командыг шалга.
+    FFmpeg-ийг PATH-д оруулсны дараа BYBE серверийг дахин асаана уу.
+   </div>}
   {file&&<section className="bybe-process-strip" aria-label="Боловсруулалтын явц">
    <div className="bybe-process-step done"><b>1</b><span>Видео нээгдсэн</span></div>
    <div className={'bybe-process-step '+(media.sourceId?'done':media.working?'working':'pending')}>
@@ -463,7 +474,7 @@ export default function StudioWorkspace(){
       <strong>{!file?'Эх видеогоо нээнэ үү.':!media.sourceId?'Видео бэлтгэж байна…':scan.job?.status==='running'?'OCR кадруудыг уншиж байна…':'Энэ хэсгийн текст хараахан илрээгүй.'}</strong>
       <p>{!file?'Эх видео нээгээд эхний OCR-ийг автоматаар эхлүүлнэ.':
        !media.sourceId?'BYBE эх файлыг локал серверт хуулж, FFmpeg-ээр аудионы долгион бэлтгэнэ.':
-       scan.job?.status==='running'?'Эхний 5 минутын хэсэг боловсруулагдаж дуусахад текст энд нэмэгдэнэ.':
+       scan.job?.status==='running'?'Таньсан кадр бүрийн текст энд шууд нэмэгдэнэ. Бусад кадрыг BYBE цаана нь үргэлжлүүлнэ.':
        'Тухайн кадрыг сонгоод «Кадрын OCR» дараарай. Текст гармагц хугацааны шугамаас хэсэг сонгон T дарж холбоно.'}</p>
      </div>:
       rows.map(s=><div key={s.id} ref={r=>{rowRefs.current[s.id]=r;}} className={'bybe-row '+(activeId===s.id?'is-current ':'')+(selectedId===s.id?'is-selected':'')}>
