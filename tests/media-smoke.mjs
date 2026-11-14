@@ -57,7 +57,21 @@ try{
  if(!wav.ok||wavData.toString('ascii',0,4)!=='RIFF'||wavData.length<1000)throw Error('WAV download invalid');
  const revisions=await json('/api/media/'+created.id+'/revisions');
  if(revisions.revisions.length!==1)throw Error('revision history missing');
- console.log('PASS source upload, FFprobe, 128 real peaks, non-destructive Czech WAV, download, SHA256');
+ const beforeQA=await json('/api/media/'+created.id+'/app-ready');
+ if(beforeQA.clips.length!==0)throw Error('Unverified WAV must not be app-ready');
+ const qa={
+  start_heard:true,end_heard:true,whole_heard:true,
+  language_correct:true,text_correct:true,role_correct:true
+ };
+ const verified=await json('/api/media/'+created.id+'/revisions/'+rev.id+'/verify','POST',{
+  clipId:'smoke-1',text:'růžová',kind:'word_normal',start:.2,end:1.2,checks:qa});
+ if(verified.qa!=='MANUALLY_VERIFIED')throw Error('Six-check QA failed');
+ const ready=await json('/api/media/'+created.id+'/app-ready');
+ if(ready.clips.length!==1||ready.clips[0].sha256!==rev.sha256)throw Error('App-ready hash manifest mismatch');
+ const streamed=await fetch(BASE+'/api/media/'+created.id+'/revisions/'+rev.id+'/stream');
+ const streamedWav=Buffer.from(await streamed.arrayBuffer());
+ if(!streamed.ok||streamedWav.toString('ascii',0,4)!=='RIFF')throw Error('Inline QA WAV failed');
+ console.log('PASS source upload, FFprobe, 128 real peaks, non-destructive Czech WAV, stream, SHA256 and six-check QA');
 }finally{
  server?.kill();
  await fs.rm(temp,{recursive:true,force:true});
