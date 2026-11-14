@@ -114,12 +114,12 @@ export default function StudioWorkspace(){
   const onKey=(e:KeyboardEvent)=>{
    if(e.ctrlKey||e.metaKey||e.altKey)return;
    const el=e.target as HTMLElement|null;
-   if(el?.matches('input,textarea,select,[contenteditable="true"]'))return;
    if(editId){
-    if(e.key==='Enter'){e.preventDefault();saveEdit();}
+    if(e.key==='Enter'&&!el?.matches('textarea')){e.preventDefault();saveEdit();}
     if(e.key==='Escape'){e.preventDefault();setEditId(null);}
     return;
    }
+   if(el?.matches('input,textarea,select,[contenteditable="true"]'))return;
    if(e.key==='Escape'){setTextMode(false);setStyleTarget(null);}
    if(e.key.toLowerCase()==='t'){e.preventDefault();setTextMode(v=>!v);}
    if(e.key.toLowerCase()==='e'&&selected){e.preventDefault();beginEdit(selected);}
