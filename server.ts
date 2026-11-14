@@ -25,7 +25,8 @@ function sendError(error:unknown):string {
 }
 registerTypographyRoutes(app,client);
 app.get('/api/health',(_req,res)=>res.json({ok:true,hasApiKey:client()!==null,locale:'mn',
-  liveVoiceEnabled:process.env.BYBE_ENABLE_LIVE_VOICE==='true'}));
+  liveVoiceEnabled:process.env.BYBE_ENABLE_LIVE_VOICE==='true',
+  ocrEngine:process.env.BYBE_OCR_ENGINE==='gemini'?'gemini-opt-in':'tesseract-local'}));
 
 /** OCR scans one deliberate screenshot. Screenshot time is NOT the spoken audio timestamp. */
 app.post('/api/ocr-frame',async(req,res)=>{
