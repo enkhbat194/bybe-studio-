@@ -828,7 +828,7 @@ export default function StudioWorkspace(){
   {editing&&<div className="bybe-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setEditId(null);}}>
    <section className="bybe-modal" role="dialog" aria-modal="true" aria-label="Аудионы зааг засах">
     <header><h2>Аудионы хэсэг засах</h2><button onClick={()=>setEditId(null)}><X size={18}/></button></header>
-    <ClipWaveEditor sourceId={media.sourceId} sourceDuration={duration}
+    <ClipWaveEditor sourceId={media.sourceId} sourceDuration={duration} text={editDraft.text}
      originalStart={editing.start} originalEnd={editing.end}
      start={Number(editDraft.start)} end={Number(editDraft.end)}
      onChange={(start,end)=>setEditDraft(d=>({...d,start:start.toFixed(3),end:end.toFixed(3)}))}/>
