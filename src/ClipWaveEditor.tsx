@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 interface BoundarySignalFrame{t:number;level:number;low:number;mid:number;high:number;flux:number;active:boolean}
+interface WhisperEvidence{
+ status:'MATCH_EXACT'|'MATCH_ACCENT_VARIANT'|'NO_MATCH'|'NO_WORD_TIMES';
+ verdict:'AGREE_REVIEW'|'DISAGREE_REVIEW'|'UNAVAILABLE_REVIEW';
+ recognizedText:string;asrStart?:number;asrEnd?:number;
+ startDeltaMs?:number;endDeltaMs?:number;note:string;
+}
 interface BoundaryResult{
+ wordEvidence?:WhisperEvidence;
  original:{start:number;end:number};
  proposed:{start:number;end:number};
  analysis:{start:number;end:number;hopMs:number;rate:number};
@@ -12,7 +19,7 @@ interface BoundaryResult{
  frames:BoundarySignalFrame[];
 }
 interface Props {
- sourceId:string;sourceDuration:number;
+ sourceId:string;sourceDuration:number;text:string;
  originalStart:number;originalEnd:number;start:number;end:number;
  onChange:(start:number,end:number)=>void;
 }
@@ -20,7 +27,7 @@ const W=760,H=145,margin=8;
 const clamp=(v:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,v));
 const sec=(v:number)=>Math.max(0,v).toFixed(3)+' сек';
 const MAX_SPAN=600; // FFmpeg peak endpoint limits one window to 600 seconds.
-export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,originalEnd,start,end,onChange}:Props){
+export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,originalEnd,start,end,onChange,text}:Props){
  const duration=Math.max(sourceDuration||0,originalEnd+1,1);
  const initialSpan=()=>Math.min(duration,Math.max(20,(originalEnd-originalStart)*4));
  const [span,setSpan]=useState(initialSpan);
@@ -29,6 +36,7 @@ export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,or
  const [error,setError]=useState('');
  const [diagnostic,setDiagnostic]=useState<BoundaryResult|null>(null);
  const [diagnosticBusy,setDiagnosticBusy]=useState(false);
+ const [doubleChecking,setDoubleChecking]=useState(false);
  const diagnosticRequest=useRef(0);
  const [repeat,setRepeat]=useState(false);
  const [listening,setListening]=useState<'selection'|'window'>('selection');
@@ -134,18 +142,18 @@ export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,or
   a.pause();a.src=url;a.load();
   void a.play().catch(()=>setError('Аудио эхлээгүй. Доорх audio Play товчийг дарж эсвэл FFmpeg-ийн алдааг шалгана уу.'));
  }
- async function analyzeBoundary(){
+ async function analyzeBoundary(crossCheck=false){
   const request=++diagnosticRequest.current;
   if(!sourceId)return;
   if(end-start>35||end-start<.04){
    setError('10 мс анализ хийх аудио 0.04–35 секунд байна. Эхлээд засах хэсгээ сонгоно уу.');return;
   }
-  setDiagnosticBusy(true);setDiagnostic(null);setError('');
+  setDiagnosticBusy(true);setDoubleChecking(crossCheck);setDiagnostic(null);setError('');
   try{
    const resp=await fetch('/api/media/'+sourceId+'/boundary-analyze',{
     method:'POST',
     headers:{'X-BYBE-Request':'1','Content-Type':'application/json'},
-    body:JSON.stringify({start,end}),
+    body:JSON.stringify({start,end,crossCheck,text:crossCheck?text:undefined}),
    });
    const value=await resp.json().catch(()=>({}));
    if(!resp.ok)throw Error(value.error||'Акустик зааг шинжлэх алдаа');
@@ -155,7 +163,7 @@ export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,or
    // The AI/FFT suggestion NEVER auto-commits to the actual clip.
    if(result.frames.length)center((start+end)/2,Math.min(45,Math.max(7,end-start+4)));
   }catch(e){if(request===diagnosticRequest.current)setError(e instanceof Error?e.message:'Анализ алдаа');}
-  finally{if(request===diagnosticRequest.current)setDiagnosticBusy(false);}
+  finally{if(request===diagnosticRequest.current){setDiagnosticBusy(false);setDoubleChecking(false);}}
  }
  const strips=useMemo(()=>{
   if(!diagnostic)return null;
@@ -219,10 +227,15 @@ export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,or
   <section className="bybe-audiovision">
    <div className="bybe-audiovision-row">
     <button type="button" className="bybe-boundary-analyze" disabled={!sourceId||diagnosticBusy||end-start>35}
-      onClick={()=>void analyzeBoundary()}>
-      {diagnosticBusy?'10 мс зааг шинжилж байна…':'◉ Audio Vision · Заагийг 10 мс-ээр шинжлэх'}
+      onClick={()=>void analyzeBoundary(false)}>
+      {diagnosticBusy&&!doubleChecking?'10 мс зааг шинжилж байна…':'◉ Audio Vision · 10 мс зааг шинжлэх'}
     </button>
-    <span>Дууны хүч + давтамж + нам гүмийг шалгана. Зөвхөн санал.</span>
+    <button type="button" disabled={!sourceId||diagnosticBusy||end-start>18||!text.trim()}
+      title="Whisper ашиглан ижил үгийн хугацаатай харьцуулна. Загвар CPU дээр удаан байж болно."
+      onClick={()=>void analyzeBoundary(true)}>
+      {doubleChecking?'Whisper хоёр дахь шалгалт…':'Whisper давхар шалгах'}
+    </button>
+    <span>10 мс акустик шинжилгээ + хүсвэл локал Whisper үгийн хугацаа. Зөвхөн санал.</span>
    </div>
    {diagnostic&&<div className="bybe-boundary-result">
     <div className="bybe-boundary-head">
@@ -234,6 +247,18 @@ export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,or
      <span>Өмнөх: {sec(diagnostic.original.start)} — {sec(diagnostic.original.end)}</span>
      <span>Санал: {sec(diagnostic.proposed.start)} — {sec(diagnostic.proposed.end)}</span>
     </div>
+    {diagnostic.wordEvidence&&<div className={'bybe-word-boundary-evidence '+diagnostic.wordEvidence.verdict}>
+     <strong>Whisper давхар шалгалт: {
+      diagnostic.wordEvidence.verdict==='AGREE_REVIEW'?'Хоёр арга ойролцоо':
+      diagnostic.wordEvidence.verdict==='DISAGREE_REVIEW'?'Зааг зөрсөн':'Баталгаажуулалт алга'
+     }</strong>
+     <span>{diagnostic.wordEvidence.note}</span>
+     {diagnostic.wordEvidence.asrStart!==undefined&&<span>
+      Whisper: {sec(diagnostic.wordEvidence.asrStart)} — {sec(diagnostic.wordEvidence.asrEnd??0)}
+      {' · '}Зөрүү {Math.round(diagnostic.wordEvidence.startDeltaMs??0)} мс / {Math.round(diagnostic.wordEvidence.endDeltaMs??0)} мс
+     </span>}
+     {diagnostic.wordEvidence.recognizedText&&<small>Танилт: {diagnostic.wordEvidence.recognizedText}</small>}
+    </div>}
     {diagnostic.warnings.map((warning,i)=><p key={i} className="bybe-boundary-warning">{warning}</p>)}
     <button type="button" disabled={diagnostic.state!=='PROPOSED_REVIEW_REQUIRED'}
       onClick={()=>{
