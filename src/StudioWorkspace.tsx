@@ -293,7 +293,10 @@ export default function StudioWorkspace(){
  function undoDelete(){
   if(!lastDeleted||lastDeleted.sourceKey!==sourceKey)return;
   const prior=lastDeleted;
-  const i=dismissedRef.current.findLastIndex(x=>deletedMatch(x,prior));
+  let i=-1;
+  for(let idx=dismissedRef.current.length-1;idx>=0;idx--){
+   if(deletedMatch(dismissedRef.current[idx],prior)){i=idx;break;}
+  }
   const next=dismissedRef.current.filter((_,idx)=>idx!==i);
   dismissedRef.current=next;setDismissed(next);
   setSegments(old=>old.some(x=>x.id===prior.id)?old:[...old,prior].sort((a,b)=>a.start-b.start));
