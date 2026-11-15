@@ -25,8 +25,16 @@ if errorlevel 1 (
  exit /b 1
 )
 echo.
-echo faster-whisper installed. Restart START_BYBE.bat.
-echo ASR model 'small' is downloaded on first transcription.
-echo RTX GPU uses CUDA only if your CUDA/cuDNN runtime is compatible.
-echo Otherwise BYBE falls back to CPU, which is slower.
+py -3.11 -c "from faster_whisper import WhisperModel; print('faster-whisper Python import: OK')"
+if errorlevel 1 (
+ echo faster-whisper still does not import. Check the Python install above.
+ pause
+ exit /b 1
+)
+echo.
+echo Whisper library imports correctly. Restart BYBE Studio.
+echo BYBE now uses CPU by default; this avoids missing cublas64_12.dll.
+echo First transcription may download the free 'small' speech model.
+echo CPU ASR can be slower than CUDA. Set BYBE_ASR_DEVICE=cuda ONLY after installing CUDA 12 + cuDNN.
+
 pause
