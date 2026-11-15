@@ -5,7 +5,9 @@
 import { spawn, spawnSync } from 'node:child_process';
 import process from 'node:process';
 import path from 'node:path';
-const ROOT=path.resolve(import.meta.dirname,'..');
+import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
+const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const BRANCH='feature/typography-ocr-workstation';
 const INTERVAL=90_000;
 function git(...args){
@@ -55,22 +57,49 @@ function update(){
 if(process.argv.includes('--check')){
  verify();console.log('BYBE LIVE branch and origin: OK');process.exit(0);
 }
-update();
-const child=spawn(process.execPath,['--import','tsx','--watch','server.ts'],{
+// IMPORTANT: start the working local server BEFORE any network/Git operations.
+// Git fetch may hang offline and must never block the BYBE application boot.
+const tsx=path.join(ROOT,'node_modules','tsx','dist','cli.mjs');
+if(!existsSync(tsx)){
+ console.error('[BYBE LIVE] tsx сан байхгүй. Эхлээд npm install ажиллуулна уу.');
+ process.exit(1);
+}
+console.log('[BYBE LIVE] Серверийг асааж байна: '+process.execPath+' tsx watch server.ts');
+const child=spawn(process.execPath,[tsx,'watch','server.ts'],{
  cwd:ROOT,env:{...process.env,BYBE_ASR_DEVICE:process.env.BYBE_ASR_DEVICE||'cpu'},
- stdio:'inherit',windowsHide:true
+ stdio:'inherit',windowsHide:false
 });
 let stopped=false;
-const timer=setInterval(update,INTERVAL);
+let timer=null;
+let firstUpdate=null;
 function shutdown(){
  if(stopped)return;
- stopped=true;clearInterval(timer);
+ stopped=true;
+ if(timer)clearInterval(timer);
+ if(firstUpdate)clearTimeout(firstUpdate);
  if(child.pid)child.kill();
 }
-process.on('SIGINT',shutdown);process.on('SIGTERM',shutdown);
-child.on('exit',(code)=>{
- shutdown();console.log('[BYBE LIVE] Сервер зогслоо ('+(code??'')+').');
- process.exitCode=code??0;
+process.on('SIGINT',shutdown);
+process.on('SIGTERM',shutdown);
+child.on('error',(err)=>{
+ console.error('[BYBE LIVE] Сервер эхлүүлэхэд алдаа: '+err.message);
+ console.error('[BYBE LIVE] Нөөц арга: npm run dev');
+ shutdown();process.exitCode=1;
 });
-console.log('[BYBE LIVE] Ажиллаж байна. GitHub өөрчлөлтийг 90 секунд тутам шалгана.');
-console.log('[BYBE LIVE] UI нь Vite HMR-ээр, сервер Node watch-ээр шинэчлэгдэнэ.');
+child.on('exit',(code)=>{
+ shutdown();
+ console.error('[BYBE LIVE] Сервер зогслоо (код: '+String(code)+').');
+ console.error('[BYBE LIVE] Нөөц арга: npm run dev');
+ process.exitCode=code||1;
+});
+if(!process.argv.includes('--no-sync')){
+ firstUpdate=setTimeout(()=>{
+  update();
+  if(!stopped)timer=setInterval(update,INTERVAL);
+ },45_000);
+ console.log('[BYBE LIVE] GitHub шалгалт 45 секундийн ДАРАА эхэлнэ; дараа нь 90 секунд тутам.');
+}else{
+ console.log('[BYBE LIVE] GitHub автоматаар татах идэвхгүй (startup smoke test).');
+}
+console.log('[BYBE LIVE] http://127.0.0.1:'+(process.env.PORT||'3000')+' — серверийн listening мөрийг шалгана уу.');
+console.log('[BYBE LIVE] Серверийн код tsx watch, интерфейс Vite HMR-ээр шинэчлэгдэнэ.');
