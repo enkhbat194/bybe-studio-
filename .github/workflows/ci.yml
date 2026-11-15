@@ -23,6 +23,8 @@ jobs:
         run: python3 tests/python-worker-device-test.py
       - name: Verify development live updater syntax
         run: node --check scripts/dev_live.mjs
+      - name: Verify gold-label evaluation CLI syntax
+        run: node --check scripts/evaluate_audio_boundaries.mjs
       - name: Verify LIVE launcher actually serves HTTP before Git sync
         run: node tests/live-startup-smoke.mjs
         timeout-minutes: 2
@@ -47,4 +49,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: LIVE server boot on Windows, not just Linux
         run: node tests/live-startup-smoke.mjs
+        timeout-minutes: 3
+      - name: Verify 10ms acoustic boundary and Whisper comparison on Windows
+        run: npx tsx --test server/audioBoundary.test.ts server/wordBoundaryCheck.test.ts
         timeout-minutes: 3
