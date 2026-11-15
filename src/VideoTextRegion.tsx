@@ -93,7 +93,13 @@ export default function VideoTextRegion({video,active,initialKind,onApply,onClos
     <span>{reading?'OCR таньж байна…':'Үг эсвэл өгүүлбэрийг хүрээлж чирнэ'}</span>
     <button type="button" onClick={onClose}>✕ Хаах</button></div>
    <textarea aria-label="OCR эсвэл гараар бичсэн текст" value={text}
-     onChange={e=>setText(e.target.value)} rows={2}
+     onChange={e=>setText(e.target.value)}
+     onKeyDown={e=>{
+      if(e.key==='Escape'){e.preventDefault();onClose();}
+      else if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&text.trim()&&!reading){
+       e.preventDefault();onApply({text:text.trim(),kind,frameSec:frameSec||video.current?.currentTime||0});
+      }
+     }} rows={2}
      placeholder="OCR таньсан өгүүлбэр энд гарна. Танихгүй бол өөрөө бичиж болно."/>
    <div className="bybe-region-panel-actions">
     <select aria-label="Текстийн төрөл" value={kind} onChange={e=>setKind(e.target.value)}>
