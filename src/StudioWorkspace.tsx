@@ -87,6 +87,7 @@ export default function StudioWorkspace(){
  const [loop,setLoop]=useState<string|null>(null);
  const [partIndex,setPartIndex]=useState(0);
  const [ocrMode,setOcrMode]=useState('Локал OCR');
+ const [asrEngine,setAsrEngine]=useState<{model:string;device:string;strategy:string}|null>(null);
  const [capabilities,setCapabilities]=useState<{ffmpeg:boolean;ffprobe:boolean;python:boolean;fasterWhisper:boolean}|null>(null);
  const [asrBusy,setAsrBusy]=useState(false);
  const [toolsOpen,setToolsOpen]=useState(false);
@@ -146,6 +147,7 @@ export default function StudioWorkspace(){
   fetch('/api/health').then(r=>r.json())
    .then(v=>setOcrMode(v.ocrEngine==='gemini-opt-in'?'Gemini OCR (сонголт)':'Локал OCR · үнэгүй')).catch(()=>{});
   fetch('/api/system/capabilities').then(r=>r.json()).then(setCapabilities).catch(()=>{});
+  fetch('/api/asr/status').then(r=>r.json()).then(setAsrEngine).catch(()=>{});
  },[]);
  useEffect(()=>{return ()=>{if(src)URL.revokeObjectURL(src);};},[src]);
  // SHIFT + mouse wheel on video = go backwards / forwards in the original media.
@@ -691,6 +693,7 @@ export default function StudioWorkspace(){
       scan.job?.status==='error'?'OCR алдаа':'OCR хүлээгдэж байна'}
     </span>
     <span className="bybe-status-divider">·</span>
+    {asrEngine&&<span title="Whisper Small анхдагч (хурдан), medium нь тусгай BAT-аар сонгох чанартай горим">Whisper {asrEngine.model} · {asrEngine.device}</span>}
     <span>{segments.length-legacyCount} харагдах санал{legacyCount?' · '+legacyCount+' хуучин/таамаг нуусан':''}</span>
    </div>
    <div className="bybe-statusline-actions">
