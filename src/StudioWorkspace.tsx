@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AudioLines, Check, ChevronLeft, ChevronRight, Clipboard, Download, Edit3, FileVideo, FolderOpen, Play, Repeat2, Save, ScanText, Settings2, X } from 'lucide-react';
+import { AudioLines, Check, ChevronLeft, ChevronRight, Clipboard, Download, Edit3, FileVideo, FolderOpen, Play, Repeat2, Save, ScanText, Settings2, Trash2, Undo2, X } from 'lucide-react';
 import { planParts, owningPart } from './lib/parts';
 import { proposeTextLinks } from './lib/ocrMatch';
 import { effectiveRole, roleLabel, sameScreenText, styleRuleFromBlock, styleSignature, usefulVideoText, validateBlock, type FrameResult, type OcrBlock, type StyleRule, type TextRole } from './lib/typography';
@@ -9,6 +9,7 @@ import { useBackgroundAsr, type AsrCandidate } from './useBackgroundAsr';
 import { useVisualAudio } from './useVisualAudio';
 import type { AudioSuggestion } from './lib/autoAlign';
 import ClipWaveEditor from './ClipWaveEditor';
+import VideoTextRegion from './VideoTextRegion';
 import './StudioWorkspace.css';
 import './StudioWorkspaceRefine.css';
 
@@ -68,6 +69,10 @@ export default function StudioWorkspace(){
  const [styleRules,setStyleRules]=useState<StyleRule[]>([]);
  const [selectedRange,setSelectedRange]=useState<{start:number;end:number}|null>(null);
  const [selectedId,setSelectedId]=useState<string|null>(null);
+ const [lastDeleted,setLastDeleted]=useState<Segment|null>(null);
+ const [dismissed,setDismissed]=useState<{start:number;end:number}[]>([]);
+ const dismissedRef=useRef<{start:number;end:number}[]>([]);
+ const videoFrameRef=useRef<HTMLDivElement|null>(null);
  const [editId,setEditId]=useState<string|null>(null);
  const [qaChecks,setQaChecks]=useState<Record<QAKey,boolean>>(emptyQa);
  const [editDraft,setEditDraft]=useState<{text:string;start:string;end:string;kind:ClipKind}>({text:'',start:'0',end:'1',kind:'unknown'});
@@ -140,7 +145,9 @@ export default function StudioWorkspace(){
  useEffect(()=>{return ()=>{if(src)URL.revokeObjectURL(src);};},[src]);
  useEffect(()=>{
   if(!sourceKey)return;
-  const data=safeRead<{segments:Segment[];frames:FrameResult[];styleRules:StyleRule[]}>(keyPrefix+':'+sourceKey,{segments:[],frames:[],styleRules:[]});
+  const data=safeRead<{segments:Segment[];frames:FrameResult[];styleRules:StyleRule[];dismissed?:{start:number;end:number}[]}>(keyPrefix+':'+sourceKey,{segments:[],frames:[],styleRules:[]});
+  const tombstones=Array.isArray(data.dismissed)?data.dismissed.filter(x=>Number.isFinite(x.start)&&Number.isFinite(x.end)):[];
+  dismissedRef.current=tombstones;setDismissed(tombstones);setLastDeleted(null);
   setSegments((data.segments||[]).filter(isSegment));
   setFrames(Array.isArray(data.frames)?data.frames.filter(x=>typeof x.frameSec==='number'&&Array.isArray(x.blocks)):[]);
   setStyleRules(Array.isArray(data.styleRules)?data.styleRules:[]);
@@ -151,9 +158,9 @@ export default function StudioWorkspace(){
   if(!sourceKey||hydratedKey!==sourceKey)return;
   try{
    // A bounded browser cache. Full video processing will require SQLite on the local worker.
-   localStorage.setItem(keyPrefix+':'+sourceKey,JSON.stringify({segments,frames:frames.slice(-120),styleRules}));
+   localStorage.setItem(keyPrefix+':'+sourceKey,JSON.stringify({segments,frames:frames.slice(-120),styleRules,dismissed}));
   }catch{setStatus('Төхөөрөмжийн түр санах ой дүүрсэн. JSON нөөцлөлт хийгээрэй.');}
- },[segments,frames,styleRules,sourceKey,hydratedKey]);
+ },[segments,frames,styleRules,dismissed,sourceKey,hydratedKey]);
  useEffect(()=>{
   if(!activeId||activeId===lastActive.current||manualList.current||editId)return;
   lastActive.current=activeId;
@@ -161,6 +168,13 @@ export default function StudioWorkspace(){
  },[activeId,editId]);
  useEffect(()=>{
   const onKey=(e:KeyboardEvent)=>{
+   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&lastDeleted){
+    const target=e.target as HTMLElement|null;
+    if(!target?.matches('input,textarea,select,[contenteditable="true"]')){
+     e.preventDefault();undoDelete();
+    }
+    return;
+   }
    if(e.ctrlKey||e.metaKey||e.altKey)return;
    const el=e.target as HTMLElement|null;
    if(editId){
@@ -169,6 +183,8 @@ export default function StudioWorkspace(){
     return;
    }
    if(el?.matches('input,textarea,select,[contenteditable="true"]'))return;
+   if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();removeSegment(selected);return;}
+   if((e.key==='z'||e.key==='Z')&&e.shiftKey&&lastDeleted){e.preventDefault();undoDelete();return;}
    if(e.key==='Escape'){setTextMode(false);setStyleTarget(null);}
    if(e.key.toLowerCase()==='t'){e.preventDefault();setTextMode(v=>!v);}
    if(e.key.toLowerCase()==='e'&&selected){e.preventDefault();beginEdit(selected);}
@@ -187,6 +203,7 @@ export default function StudioWorkspace(){
   autoImportKey.current='';
   autoOcrSource.current='';
   autoAsrSource.current='';
+  dismissedRef.current=[];
   setFile(f);setSourceKey(key);setSrc(URL.createObjectURL(f));setDuration(0);
   setStatus('Видео нээгдлээ. BYBE файлыг локал хөдөлгүүрт бэлтгээд OCR-ийг автоматаар эхлүүлнэ. Том файлд SSD зай шаардлагатай.');
  }
@@ -242,6 +259,51 @@ export default function StudioWorkspace(){
    window.setTimeout(()=>URL.revokeObjectURL(url),1000);
    setStatus((data.clips?.length||0)+' QA баталгаажсан WAV-ийн manifest экспортлов. Аудио файлуудыг тусад нь татна.');
   }catch(e){setStatus(e instanceof Error?e.message:'Экспортын алдаа');}
+ }
+ const deletedMatch=(a:{start:number;end:number},b:{start:number;end:number})=>
+  Math.abs(a.start-b.start)<.65&&Math.abs(a.end-b.end)<.8;
+ function removeSegment(s:Segment){
+  if(s.qa==='MANUALLY_VERIFIED'&&
+    !window.confirm('QA баталгаажсан аудионы бүртгэлийг устгах уу? WAV файл сервер дээр хэвээр үлдэнэ.'))return;
+  const next=[...dismissedRef.current,{start:s.start,end:s.end}];
+  dismissedRef.current=next;setDismissed(next);
+  setSegments(old=>old.filter(x=>x.id!==s.id));
+  if(selectedId===s.id)setSelectedId(null);
+  setLastDeleted(s);
+  setStatus('Аудионы мөрийг хаслаа. Ctrl+Z эсвэл «Буцаах» дарж сэргээнэ. Эх видео, WAV файл устахгүй.');
+ }
+ function undoDelete(){
+  if(!lastDeleted||lastDeleted.sourceKey!==sourceKey)return;
+  const prior=lastDeleted;
+  const i=dismissedRef.current.findLastIndex(x=>deletedMatch(x,prior));
+  const next=dismissedRef.current.filter((_,idx)=>idx!==i);
+  dismissedRef.current=next;setDismissed(next);
+  setSegments(old=>old.some(x=>x.id===prior.id)?old:[...old,prior].sort((a,b)=>a.start-b.start));
+  setSelectedId(prior.id);setLastDeleted(null);
+  setStatus('Устгасан аудионы мөр сэргээгдлээ.');
+ }
+ function attachRegionText(data:{text:string;kind:string;frameSec:number}){
+  const text=data.text.normalize('NFC').trim();
+  if(!text)return setStatus('Хоосон бичвэртэй аудио холбохгүй.');
+  const kind=KINDS.includes(data.kind as ClipKind)?data.kind as ClipKind:'unknown';
+  const start=selectedRange?.start??selected?.start,end=selectedRange?.end??selected?.end;
+  if(start===undefined||end===undefined||end-start<.04){
+   setStatus('Эхлээд доод waveform-аас аудио хүрээ чирж сонгох эсвэл зүүн жагсаалтын мөр сонгоно уу.');
+   return;
+  }
+  if(selectedRange){
+   const item:Segment={id:crypto.randomUUID(),sourceKey,text,kind,
+    start:n3(start),end:n3(end),frameSec:data.frameSec,ocrId:null,
+    styleSignature:null,qa:'REVIEW_REQUIRED',updatedAt:new Date().toISOString()};
+   setSegments(old=>[...old,item].sort((a,b)=>a.start-b.start));
+   setSelectedId(item.id);setSelectedRange(null);
+  }else if(selected){
+   setSegments(old=>old.map(x=>x.id===selected.id?{...x,text,kind,
+    frameSec:data.frameSec,ocrId:null,styleSignature:null,origin:undefined,
+    matchStatus:undefined,revisionId:undefined,checks:emptyQa(),
+    qa:'REVIEW_REQUIRED' as const,updatedAt:new Date().toISOString()}:x));
+  }
+  setTextMode(false);setStatus('Бүтэн бичвэр "'+text+'" сонгосон аудиотой холбогдлоо. Сонсож QA шалгана.');
  }
  function beginEdit(s:Segment){
   video.current?.pause();
@@ -371,7 +433,7 @@ export default function StudioWorkspace(){
  }
  function exportJson(){
   const payload={schema:'bybe-workspace-v2',source:{name:file?.name??'',size:file?.size??0,modified:file?.lastModified??0},
-   savedAt:new Date().toISOString(),segments,frames,styleRules};
+   savedAt:new Date().toISOString(),segments,frames,styleRules,dismissed};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='BYBE_'+(file?.name??'workspace')+'.json';a.click();
   window.setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -387,6 +449,8 @@ export default function StudioWorkspace(){
    setSegments(data.segments.map((s:Segment)=>({...s,sourceKey:sourceKey||s.sourceKey})));
    setFrames(Array.isArray(data.frames)?data.frames:[]);
    setStyleRules(Array.isArray(data.styleRules)?data.styleRules:[]);
+   const hidden=Array.isArray(data.dismissed)?data.dismissed.filter((x:any)=>Number.isFinite(x.start)&&Number.isFinite(x.end)):[];
+   dismissedRef.current=hidden;setDismissed(hidden);
    setStatus(data.segments.length+' мөр импортлов. Хугацаа болон аудиог шалгана уу.');
   }catch(e){setStatus(e instanceof Error?e.message:'JSON импортын алдаа');}
  }
@@ -434,6 +498,7 @@ export default function StudioWorkspace(){
    const merged=old.slice();
    let changed=false;
    for(const suggestion of items){
+    if(dismissedRef.current.some(d=>Math.abs(d.start-suggestion.start)<.65&&Math.abs(d.end-suggestion.end)<.8))continue;
     // Never overwrite a manually edited or ASR-based audio segment with visual estimates.
     if(merged.some(c=>Math.abs(c.start-suggestion.start)<.45&&Math.abs(c.end-suggestion.end)<.45))continue;
     if(merged.some(c=>c.origin!=='VISUAL_AUDIO_ESTIMATE'&&
@@ -474,6 +539,7 @@ export default function StudioWorkspace(){
    let known=old.slice(),changed=false;
    for(const entry of items){
     if(typeof entry.text!=='string'||!Number.isFinite(entry.start)||!Number.isFinite(entry.end)||entry.end<=entry.start)continue;
+    if(dismissedRef.current.some(d=>Math.abs(d.start-entry.start)<.65&&Math.abs(d.end-entry.end)<.8))continue;
     if(known.some(s=>s.origin!=='VISUAL_AUDIO_ESTIMATE'&&Math.abs(s.start-entry.start)<.4&&Math.abs(s.end-entry.end)<.4))continue;
     // A local speech-recognition timestamp supersedes an estimated waveform slot,
     // but NEVER removes manual edits, WAV revisions or verified records.
