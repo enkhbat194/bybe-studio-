@@ -24,6 +24,7 @@ interface Segment {
  id:string;sourceKey:string;text:string;kind:ClipKind;start:number;end:number;
  revisionId?:string;checks?:Record<QAKey,boolean>;matchStatus?:'AUTO_SUGGESTED';
  origin?:'VISUAL_AUDIO_ESTIMATE'|'LOCAL_ASR';
+ asrPass?:'VAD_UTTERANCE';detectedLanguage?:string;reviewReasons?:string[];
  firstPassStart?:number;firstPassEnd?:number;
  frameSec:number|null;ocrId:string|null;styleSignature:string|null;
  qa:'REVIEW_REQUIRED'|'MANUALLY_VERIFIED';updatedAt:string;
@@ -66,6 +67,7 @@ export default function StudioWorkspace(){
  const [duration,setDuration]=useState(0);
  const [current,setCurrent]=useState(0);
  const [segments,setSegments]=useState<Segment[]>([]);
+ const [showLegacySuggestions,setShowLegacySuggestions]=useState(false);
  const [frames,setFrames]=useState<FrameResult[]>([]);
  const [styleRules,setStyleRules]=useState<StyleRule[]>([]);
  const [selectedRange,setSelectedRange]=useState<{start:number;end:number}|null>(null);
@@ -565,13 +567,19 @@ export default function StudioWorkspace(){
    for(const entry of items){
     if(typeof entry.text!=='string'||!Number.isFinite(entry.start)||!Number.isFinite(entry.end)||entry.end<=entry.start)continue;
     if(dismissedRef.current.some(d=>Math.abs(d.start-entry.start)<.65&&Math.abs(d.end-entry.end)<.8))continue;
-    if(known.some(s=>s.origin!=='VISUAL_AUDIO_ESTIMATE'&&Math.abs(s.start-entry.start)<.4&&Math.abs(s.end-entry.end)<.4))continue;
+    // New VAD/utterance records supersede OLD five-minute language guesses in
+    // the primary view, without erasing either the archive or human edits.
+    if(known.some(s=>s.origin!=='VISUAL_AUDIO_ESTIMATE'&&
+      !(entry.asrPass==='VAD_UTTERANCE'&&s.origin==='LOCAL_ASR'&&s.asrPass!=='VAD_UTTERANCE')&&
+      Math.abs(s.start-entry.start)<.4&&Math.abs(s.end-entry.end)<.4))continue;
     // A local speech-recognition timestamp supersedes an estimated waveform slot,
     // but NEVER removes manual edits, WAV revisions or verified records.
     known=known.filter(c=>c.origin!=='VISUAL_AUDIO_ESTIMATE'||c.revisionId||
        Math.max(0,Math.min(c.end,entry.end)-Math.max(c.start,entry.start))<
        .45*Math.min(c.end-c.start,entry.end-entry.start));
     known.push({id:crypto.randomUUID(),sourceKey,text:entry.text,kind:'unknown',
+      asrPass:entry.asrPass,detectedLanguage:entry.language,
+      reviewReasons:Array.isArray(entry.reviewReasons)?entry.reviewReasons:[],
       start:n3(entry.start),end:n3(entry.end),firstPassStart:n3(entry.start),firstPassEnd:n3(entry.end),
       frameSec:null,ocrId:null,styleSignature:null,
       qa:'REVIEW_REQUIRED',origin:'LOCAL_ASR',updatedAt:new Date().toISOString()});
@@ -614,7 +622,12 @@ export default function StudioWorkspace(){
   ...(scan.job?.status==='complete'&&ocrBlocks===0?['OCR дууссан ч бичвэр 0 байна. «OCR дахин таних» товч дарна уу.']:[]),
   ...(backgroundAsr.job?.status==='error'?[backgroundAsr.job.message.slice(0,165)]:[]),
  ];
- const rows=segments.filter(s=>s.start<part.coreEnd&&s.end>part.coreStart);
+ const isLegacySuggestion=(s:Segment)=>s.qa!=='MANUALLY_VERIFIED'&&(
+   s.origin==='VISUAL_AUDIO_ESTIMATE'||
+   s.origin==='LOCAL_ASR'&&s.asrPass!=='VAD_UTTERANCE');
+ const legacyCount=segments.filter(isLegacySuggestion).length;
+ const rows=segments.filter(s=>s.start<part.coreEnd&&s.end>part.coreStart&&
+  (showLegacySuggestions||!isLegacySuggestion(s)));
  const videoAspect=video.current?.videoWidth&&video.current?.videoHeight?video.current.videoWidth/video.current.videoHeight:16/9;
 
  return <div className="bybe-workstation">
@@ -644,6 +657,11 @@ export default function StudioWorkspace(){
    <button onClick={()=>void backgroundAsr.start()} title={capabilities&&!capabilities.fasterWhisper?'Whisper-ийн Python сан суулгагдаагүй байна':''} disabled={!media.sourceId||backgroundAsr.busy||capabilities?.fasterWhisper===false||!!backgroundAsr.job&&backgroundAsr.job.status!=='error'}>
     <AudioLines size={17}/> Бүх видеоны Whisper
    </button>
+   {media.sourceId&&capabilities?.fasterWhisper&&
+    (backgroundAsr.job?.status==='complete'||backgroundAsr.job?.status==='error')&&
+    <button type="button" onClick={()=>{
+      if(window.confirm('Хуучин Whisper-ийн танилтыг дарахгүйгээр шинэ Silero VAD + хэл тус бүрийн танилт эхлүүлэх үү? CPU дээр өмнөхөөс удаан байж болно.'))void backgroundAsr.start(true);
+     }}>↻ Шинэ VAD танилтаар дахин шалгах</button>}
    {backgroundAsr.job?.status==='running'&&<button onClick={()=>void backgroundAsr.pause()}>ASR түр зогсоох</button>}
    {backgroundAsr.job?.status==='paused'&&<button onClick={()=>void backgroundAsr.resume()}>ASR үргэлжлүүлэх</button>}
    <button onClick={()=>void transcribePart()} title={capabilities&&!capabilities.fasterWhisper?'INSTALL_WHISPER_WINDOWS.bat хэрэгтэй':''} disabled={!media.sourceId||asrBusy||capabilities?.fasterWhisper===false}>
@@ -707,7 +725,11 @@ export default function StudioWorkspace(){
    <section className="bybe-transcript panel">
     <header><h2>Автомат холбосон аудио</h2>
      <div className="bybe-rows-head-actions">
-      <span>{rows.length} хэсэг · {reviewCount} шалгах</span>
+      <span>{rows.length} харагдаж байна · {reviewCount} шалгах</span>
+      {legacyCount>0&&<button type="button" onClick={()=>setShowLegacySuggestions(x=>!x)}
+       title="Хуучин 5 минутын Whisper ба OCR-waveform таслах таамгуудыг тусад нь үзэх. Нэг ч мэдээллийг устгахгүй.">
+        {showLegacySuggestions?'Хуучин таамгийг нуух':'Хуучин/бүдүүн санал ('+legacyCount+')'}
+       </button>}
       {lastDeleted&&<button type="button" title="Ctrl+Z" onClick={undoDelete}><Undo2 size={14}/> Буцаах</button>}
      </div>
     </header>
@@ -717,11 +739,14 @@ export default function StudioWorkspace(){
       <p>{!file?'Эх видео нээгээд эхний OCR-ийг автоматаар эхлүүлнэ.':
        !media.sourceId?'BYBE эх файлыг локал серверт хуулж, FFmpeg-ээр аудионы долгион бэлтгэнэ.':
        scan.job?.status==='running'?'OCR илрүүлэх + FFmpeg аудионы идэвхтэй хэсгүүдээр автоматаар холбож байна. Зөвхөн шалгахад оролцоно.':
-       'Whisper суусан бол яриаг автоматаар танина. Суулаагүй үед OCR + waveform холболт урьдчилсан санал гаргах бөгөөд буруу заагийг засаж болно.'}</p>
+       legacyCount>0&&!showLegacySuggestions?'Хуучин таван минутын хэлний таамаг ба waveform мөрүүд нуусан. «Хуучин/бүдүүн санал» дарж харна, эсвэл шинэ VAD танилтаар дахин шалгана.':
+       'Whisper суусан бол яриаг автоматаар танина. Суулаагүй үед OCR + waveform холбоос баталгаагүй санал гаргана.'}</p>
      </div>:
       rows.map(s=><div key={s.id} ref={r=>{rowRefs.current[s.id]=r;}} className={'bybe-row '+(activeId===s.id?'is-current ':'')+(selectedId===s.id?'is-selected':'')}>
        <button className="bybe-row-text" onClick={()=>{setSelectedId(s.id);const v=video.current;if(v){v.currentTime=s.start;v.pause();}}} title="Видеог энэ хэсэгт очуулах">
-        <span>{s.text}</span><small>{time(s.start)}–{time(s.end)} · {kindNames[s.kind]} · {s.qa==='MANUALLY_VERIFIED'?'✓ QA баталсан':s.origin==='VISUAL_AUDIO_ESTIMATE'?'OCR + долгионы санал · зааг шалгах':s.origin==='LOCAL_ASR'?'Whisper танилт · шалгах':s.matchStatus==='AUTO_SUGGESTED'?'OCR таарсан · шалгах':'QA шалгах'}</small>
+        <span>{s.text}</span><small>{time(s.start)}–{time(s.end)} · {kindNames[s.kind]} · {s.qa==='MANUALLY_VERIFIED'?'✓ QA баталсан':s.origin==='VISUAL_AUDIO_ESTIMATE'?'OCR + долгионы санал · зааг шалгах':s.origin==='LOCAL_ASR'?s.asrPass==='VAD_UTTERANCE'?
+       'Whisper + VAD · '+(s.detectedLanguage==='cs'?'Чех':s.detectedLanguage==='en'?'Англи':'Хэл эргэлзээтэй')+
+       (s.reviewReasons?.length?' · Алдаа эрсдэлтэй':' · сонсож шалгах'):'Хуучин 5 минутын ASR · найдваргүй':s.matchStatus==='AUTO_SUGGESTED'?'OCR таарсан · шалгах':'QA шалгах'}</small>
        </button>
        <div className="bybe-row-actions">
         <button title="Сонсох" aria-label={s.text+' сонсох'} onClick={()=>play(s,false)}><Play size={15}/></button>
