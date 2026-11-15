@@ -492,11 +492,20 @@ export default function StudioWorkspace(){
  // If free faster-whisper is installed, source import launches ASR automatically.
  // Without it, the visual+audio waveform proposal still runs and is clearly unverified.
  useEffect(()=>{
-  if(!media.sourceId||capabilities?.fasterWhisper!==true||backgroundAsr.job||backgroundAsr.busy)return;
+  if(!media.sourceId||capabilities?.fasterWhisper!==true||backgroundAsr.busy)return;
+  // An existing failed CUDA job predates CPU-safe default; retry ONCE per reopening.
+  if(backgroundAsr.job?.status==='error'){
+   const key=media.sourceId+':retry';
+   if(autoAsrSource.current===key)return;
+   autoAsrSource.current=key;
+   void backgroundAsr.resume();
+   return;
+  }
+  if(backgroundAsr.job)return;
   if(autoAsrSource.current===media.sourceId)return;
   autoAsrSource.current=media.sourceId;
   void backgroundAsr.start();
- },[media.sourceId,capabilities?.fasterWhisper,backgroundAsr.job,backgroundAsr.busy,backgroundAsr.start]);
+ },[media.sourceId,capabilities?.fasterWhisper,backgroundAsr.job,backgroundAsr.busy,backgroundAsr.start,backgroundAsr.resume]);
  useEffect(()=>{if(!duration && media.sourceDuration>0)setDuration(media.sourceDuration);},[duration,media.sourceDuration]);
  const pct=(sec:number)=>100*(sec-startOfView)/Math.max(.001,endOfView-startOfView);
  const soundBars=useMemo(()=>media.peaks.map((amplitude,i)=>(
