@@ -76,8 +76,13 @@ export function registerBackgroundAsr(app:Express){
   if(typeof id!=='string'||!isId(id)){res.status(400).json({error:'Эх файлын ID буруу.'});return;}
   const source=await getLocalSource(id);
   if(!source||!source.meta.duration){res.status(404).json({error:'Эх видео бэлэн биш.'});return;}
-  const existing=Array.from(jobs.values()).find(j=>j.sourceId===id);
-  if(existing){
+  const force=req.body?.force===true;
+  const recent=Array.from(jobs.values()).filter(j=>j.sourceId===id).reverse();
+  const existing=recent[0];
+  // Never run two models simultaneously on a 16GB-RAM Windows workstation.
+  const inProgress=recent.find(j=>j.status==='running'||j.status==='queued'||j.status==='paused');
+  if(inProgress){res.json(inProgress);return;}
+  if(existing&&!force){
    // A failed job from before faster-whisper was installed is not permanent.
    // A new explicit start request may resume it without deleting completed parts.
    if(existing.status==='error'){
