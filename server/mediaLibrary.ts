@@ -202,7 +202,20 @@ export function registerMediaRoutes(app:Express):void{
      '-i',original(m.id),'-t',String(end-start),'-vn','-ac','1','-ar','24000',
      '-c:a','pcm_s16le','-f','wav','pipe:1'],'ffmpeg',17_000_000);
    if(out.code!==0||out.stdout.length<44)throw Error('Аудио preview алдаа: '+out.stderr.slice(-240));
-   res.set('Cache-Control','no-store');res.type('wav');res.send(out.stdout);
+   // FFmpeg -> pipe:1 writes RIFF/data length as 0xFFFFFFFF (unknown stream size).
+   // We buffer the clip anyway, so fix both lengths for reliable Chrome/Edge duration/playback.
+   const wav=Buffer.from(out.stdout);
+   if(wav.toString('ascii',0,4)!=='RIFF'||wav.toString('ascii',8,12)!=='WAVE')
+    throw Error('Аудио preview WAV толгой буруу байна.');
+   wav.writeUInt32LE(wav.length-8,4);
+   let at=12;
+   while(at+8<=wav.length){
+    const kind=wav.toString('ascii',at,at+4),size=wav.readUInt32LE(at+4);
+    if(kind==='data'){wav.writeUInt32LE(wav.length-(at+8),at+4);break;}
+    if(size===0xFFFFFFFF||at+8+size>wav.length)break;
+    at+=8+size+(size%2);
+   }
+   res.set('Cache-Control','no-store');res.type('wav');res.send(wav);
   }catch(e){fail(res,e);}
  });
  app.get('/api/media/:id/peaks',async(req,res)=>{
