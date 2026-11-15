@@ -143,6 +143,23 @@ export default function StudioWorkspace(){
   fetch('/api/system/capabilities').then(r=>r.json()).then(setCapabilities).catch(()=>{});
  },[]);
  useEffect(()=>{return ()=>{if(src)URL.revokeObjectURL(src);};},[src]);
+ // SHIFT + mouse wheel on video = go backwards / forwards in the original media.
+ // This is independent of the timeline pan and does not interfere with video play controls.
+ useEffect(()=>{
+  const el=videoFrameRef.current;if(!el)return;
+  const wheel=(e:WheelEvent)=>{
+   if(!e.shiftKey||!video.current)return;
+   e.preventDefault();
+   const delta=e.deltaY||e.deltaX;
+   if(!delta)return;
+   const v=video.current;
+   const step=Math.max(1,Math.min(9,Math.abs(delta)/90*3.5));
+   const target=Math.max(0,Math.min(duration||v.duration||1,v.currentTime+Math.sign(delta)*step));
+   v.pause();v.currentTime=target;setCurrent(target);setViewAnchor(target);toPartAt(target);
+  };
+  el.addEventListener('wheel',wheel,{passive:false});
+  return()=>el.removeEventListener('wheel',wheel);
+ },[src,duration,parts]);
  useEffect(()=>{
   if(!sourceKey)return;
   const data=safeRead<{segments:Segment[];frames:FrameResult[];styleRules:StyleRule[];dismissed?:{start:number;end:number}[]}>(keyPrefix+':'+sourceKey,{segments:[],frames:[],styleRules:[]});
@@ -186,7 +203,7 @@ export default function StudioWorkspace(){
    if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();removeSegment(selected);return;}
    if((e.key==='z'||e.key==='Z')&&e.shiftKey&&lastDeleted){e.preventDefault();undoDelete();return;}
    if(e.key==='Escape'){setTextMode(false);setStyleTarget(null);}
-   if(e.key.toLowerCase()==='t'){e.preventDefault();setTextMode(v=>!v);}
+   if(e.key.toLowerCase()==='t'){e.preventDefault();if(!textMode)video.current?.pause();setTextMode(v=>!v);}
    if(e.key.toLowerCase()==='e'&&selected){e.preventDefault();beginEdit(selected);}
    if(e.key===' '){e.preventDefault();const v=video.current;if(v){if(v.paused)void v.play();else v.pause();}}
   };
@@ -205,6 +222,7 @@ export default function StudioWorkspace(){
   autoAsrSource.current='';
   dismissedRef.current=[];
   setFile(f);setSourceKey(key);setSrc(URL.createObjectURL(f));setDuration(0);
+  setTextMode(false);
   setStatus('Видео нээгдлээ. BYBE файлыг локал хөдөлгүүрт бэлтгээд OCR-ийг автоматаар эхлүүлнэ. Том файлд SSD зай шаардлагатай.');
  }
  function toPartAt(t:number){const ix=owningPart(parts,t);if(ix!==null)setPartIndex(ix-1);}
@@ -679,7 +697,12 @@ export default function StudioWorkspace(){
   </div>}
   <main className="bybe-core">
    <section className="bybe-transcript panel">
-    <header><h2>Автомат холбосон аудио</h2><span>{rows.length} хэсэг · {reviewCount} шалгах</span></header>
+    <header><h2>Автомат холбосон аудио</h2>
+     <div className="bybe-rows-head-actions">
+      <span>{rows.length} хэсэг · {reviewCount} шалгах</span>
+      {lastDeleted&&<button type="button" title="Ctrl+Z" onClick={undoDelete}><Undo2 size={14}/> Буцаах</button>}
+     </div>
+    </header>
     <div className="bybe-rows" ref={listRef} onWheel={()=>{manualList.current=true;window.setTimeout(()=>manualList.current=false,3000);}}>
      {rows.length===0&&unlinked.length===0?<div className="bybe-empty">
       <strong>{!file?'Эх видеогоо нээнэ үү.':!media.sourceId?'Видео бэлтгэж байна…':scan.job?.status==='running'?'Текст болон аудионы санал бэлтгэж байна…':'Энэ хэсгийн аудио санал хараахан алга.'}</strong>
@@ -696,6 +719,8 @@ export default function StudioWorkspace(){
         <button title="Сонсох" aria-label={s.text+' сонсох'} onClick={()=>play(s,false)}><Play size={15}/></button>
         <button className={loop===s.id?'is-loop':''} title="Тасралтгүй давтах" aria-label={s.text+' давтах'} onClick={()=>loop===s.id?(setLoop(null),video.current?.pause()):play(s,true)}><Repeat2 size={15}/></button>
         <button title="Засах" aria-label={s.text+' засах'} onClick={()=>beginEdit(s)}><Edit3 size={15}/></button>
+        <button type="button" className="bybe-delete-row" title="Энэ аудионы мөрийг устгах · Delete (Ctrl+Z буцаах)"
+         aria-label={s.text+' аудионы мөр устгах'} onClick={()=>removeSegment(s)}><Trash2 size={15}/></button>
         <button disabled={!media.sourceId||media.working} title="Жинхэнэ WAV шинэ хувилбар хадгалах (QA шалгах шаардлагатай)"
          aria-label={s.text+' WAV үүсгэх'} onClick={()=>void exportClip(s)}><Download size={15}/></button>
        </div>
@@ -715,7 +740,7 @@ export default function StudioWorkspace(){
    <section className="bybe-preview panel">
     <header><h2>Эх видео · текст сонгох</h2><span>Текст таних: {frame?'кадр бэлэн':'энэ кадрт байхгүй'}</span></header>
     <div className="bybe-video-holder">
-     {src?<div className="bybe-video-frame" style={{aspectRatio:String(videoAspect)}}>
+     {src?<div className="bybe-video-frame" ref={videoFrameRef} style={{aspectRatio:String(videoAspect)}}>
       <video ref={video} src={media.previewUrl||src} controls playsInline preload="metadata"
        onTimeUpdate={onTimeTick}
        onLoadedMetadata={e=>{const d=e.currentTarget.duration;setDuration(Number.isFinite(d)?d:0);}}
@@ -728,14 +753,19 @@ export default function StudioWorkspace(){
         </button>
         <button className="bybe-style-button" title="Энэ үсгийн хэв маягийг ангилах" onClick={()=>{setStyleTarget(b);setStyleRole(effectiveRole(b,styleRules));}}><Settings2 size={11}/></button>
        </div>)}
+       {textMode&&<VideoTextRegion video={video} active={textMode}
+        initialKind={selected?.kind??'unknown'} onApply={attachRegionText}
+        onClose={()=>setTextMode(false)} onStatus={setStatus}/>}
       </div>:<div className="bybe-video-empty"><FileVideo size={34}/> Эх видео сонгоно уу</div>}
     </div>
     <div className="bybe-preview-tools">
      <span>{time(current)} / {time(duration)}</span>
-     <button className={textMode?'primary':''} onClick={()=>setTextMode(v=>!v)}>T · Текст холбох</button>
+     <button className={textMode?'primary':''} onClick={()=>{if(!textMode)video.current?.pause();setTextMode(v=>!v);}}>
+      {textMode?'✕ Сонголт хаах':'T · Бүтэн текст хүрээлэх'}
+     </button>
      <button onClick={()=>void captureFrame()} disabled={!src||busy}><ScanText size={15}/> Одоо харагдаж буй кадрыг таних</button>
     </div>
-    <p className="bybe-help">Үндсэн OCR компьютер дээр үнэгүй ажиллана. Анхны запускт Чех/Англи хэлний загвар татагдаж болно. Үсгийн өнгө/зузааны бодит танилт хараахан байхгүй. Координат ба текстийг шалгана.</p>
+    <p className="bybe-help">T товч → видеоны үг/өгүүлбэрийг хулганаар хүрээлж чирнэ → текст OCR-оор орно → засаж, хуулж эсвэл сонгосон аудиотой холбоно. OCR танихгүй бол шууд бичнэ. Shift + дугуй = видеог урагш/хойш шилжүүлэх.</p>
    </section>
   </main>
   <section className="bybe-timeline panel">
