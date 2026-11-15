@@ -15,3 +15,41 @@ jobs:
       - run: npm run check
       - run: npm run test
       - run: npm run build
+      - name: Verify optional Python ASR worker syntax
+        run: python3 -m py_compile scripts/local_asr_worker.py
+      - name: Windows-like CP1252 Python Unicode regression
+        run: node tests/python-encoding.mjs
+      - name: Whisper worker CPU device assignment regression
+        run: python3 tests/python-worker-device-test.py
+      - name: Verify development live updater syntax
+        run: node --check scripts/dev_live.mjs
+      - name: Verify gold-label evaluation CLI syntax
+        run: node --check scripts/evaluate_audio_boundaries.mjs
+      - name: Verify LIVE launcher actually serves HTTP before Git sync
+        run: node tests/live-startup-smoke.mjs
+        timeout-minutes: 2
+      - name: Ensure FFmpeg is available
+        run: command -v ffmpeg && command -v ffprobe || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+      - name: Real media API smoke test
+        run: node tests/media-smoke.mjs
+      - name: Real Czech-English local OCR smoke test (no API key)
+        run: node --import tsx tests/ocr-smoke.mjs
+        timeout-minutes: 5
+      - name: End-to-end automatic OCR audio linking (no Whisper API)
+        run: node --import tsx tests/auto-link-smoke.mjs
+        timeout-minutes: 5
+
+  windows-live:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: LIVE server boot on Windows, not just Linux
+        run: node tests/live-startup-smoke.mjs
+        timeout-minutes: 3
+      - name: Verify 10ms acoustic boundary and Whisper comparison on Windows
+        run: npx tsx --test server/audioBoundary.test.ts server/wordBoundaryCheck.test.ts
+        timeout-minutes: 3

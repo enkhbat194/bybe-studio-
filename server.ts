@@ -4,10 +4,18 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
+import { spawnSync } from 'node:child_process';
+import { registerTypographyRoutes } from './server/ocrTypography';
+import { registerMediaRoutes } from './server/mediaLibrary';
+import { registerAudioBoundaryRoutes } from './server/audioBoundary';
+import { registerScanRoutes, recoverScanJobs } from './server/backgroundScan';
+import { registerLocalAsrRoutes } from './server/localAsr';
+import { registerBackgroundAsr, recoverAsrJobs } from './server/backgroundAsr';
 
 const app=express();
 const PORT=Number(process.env.PORT||3000);
-const HOST=process.env.HOST||'0.0.0.0';
+// Bind to the current PC only: do NOT expose media and FFmpeg endpoints on the LAN.
+const HOST=process.env.HOST||'127.0.0.1';
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
 app.disable('x-powered-by');
 app.use(express.json({limit:'6mb'}));
@@ -22,8 +30,35 @@ function sendError(error:unknown):string {
   if(msg.includes('403')||msg.includes('API_KEY_INVALID'))return 'Gemini API түлхүүрийн эрх эсвэл утга буруу байна.';
   return 'AI хүсэлт амжилтгүй боллоо. Серверийн логийг шалгана уу.';
 }
+registerTypographyRoutes(app,client);
+registerMediaRoutes(app);
+registerAudioBoundaryRoutes(app);
+registerScanRoutes(app);
+registerLocalAsrRoutes(app);
+registerBackgroundAsr(app);
+function systemCheck(cmd:string,args:string[]):boolean {
+ try {
+  const result=spawnSync(cmd,args,{encoding:'utf8',timeout:3500,windowsHide:true,stdio:'ignore'});
+  return !result.error && result.status===0;
+ }catch{return false;}
+}
+app.get('/api/system/capabilities',(_req,res)=>{
+ const ffmpeg=systemCheck('ffmpeg',['-version']);
+ const ffprobe=systemCheck('ffprobe',['-version']);
+ const windows=process.platform==='win32';
+ const pythonCommand=process.env.BYBE_PYTHON|| (windows?'py':'python3');
+ const pythonArgs=windows&&pythonCommand==='py'?['-3.11','--version']:['--version'];
+ const python=systemCheck(pythonCommand,pythonArgs);
+ const asrArgs=[...(windows&&pythonCommand==='py'?['-3.11']:[]),'-c',
+  'import importlib.util,sys;sys.exit(0 if importlib.util.find_spec("faster_whisper") else 1)'];
+ const fasterWhisper=python&&systemCheck(pythonCommand,asrArgs);
+ res.json({ffmpeg,ffprobe,python,fasterWhisper,
+  ocr:'tesseract-local',asr:'optional-faster-whisper',
+  warning:!ffmpeg||!ffprobe?'FFmpeg/FFprobe програм Windows PATH дотор олдсонгүй. Аудио боловсруулахгүй.':null});
+});
 app.get('/api/health',(_req,res)=>res.json({ok:true,hasApiKey:client()!==null,locale:'mn',
-  liveVoiceEnabled:process.env.BYBE_ENABLE_LIVE_VOICE==='true'}));
+  liveVoiceEnabled:process.env.BYBE_ENABLE_LIVE_VOICE==='true',
+  ocrEngine:process.env.BYBE_OCR_ENGINE==='gemini'?'gemini-opt-in':'tesseract-local'}));
 
 /** OCR scans one deliberate screenshot. Screenshot time is NOT the spoken audio timestamp. */
 app.post('/api/ocr-frame',async(req,res)=>{
@@ -81,6 +116,8 @@ app.post('/api/transcribe-clip',async(req,res)=>{
 });
 
 async function main(){
+  await recoverScanJobs();
+  await recoverAsrJobs();
   if(process.env.NODE_ENV!=='production'){
     const {createServer}=await import('vite');
     const vite=await createServer({server:{middlewareMode:true},appType:'spa'});

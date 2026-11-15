@@ -1,0 +1,292 @@
+/* BYBE Studio editorial workstation design — desktop-first, compact, neutral dark.
+   Imported after legacy CSS so these scoped declarations override global App styles. */
+.bybe-workstation{
+ --bp:#10151d;--bs:#171e29;--bb:#334253;
+ color:#e7edf4;background:#0c1118;
+ font-family:Inter,"Segoe UI",system-ui,sans-serif;
+ font-size:14px;
+ line-height:1.45;
+ padding:10px 14px 16px;
+ min-height:100vh;
+}
+.bybe-workstation .bybe-menu{
+ position:sticky;top:0;z-index:25;
+ min-height:52px;display:flex;flex-wrap:wrap;gap:7px;align-items:center;
+ background:#171e28;border:1px solid #334151;border-radius:10px;
+ padding:7px 12px;box-shadow:0 3px 10px #0003;
+}
+.bybe-workstation .bybe-logo{font-size:16px;letter-spacing:-.45px;margin-right:16px;color:#fff}
+.bybe-workstation .bybe-logo svg{color:#39c9b0}
+.bybe-workstation button{background:#222c39;color:#e3ecf5;
+ border-color:#415166;padding:7px 10px;min-height:34px;border-radius:7px;font-size:12px;
+ font-weight:500;transition:background-color .12s,border-color .12s}
+.bybe-workstation button:hover:not(:disabled){background:#2d4052;border-color:#6684a1}
+.bybe-workstation button.primary{background:#1b8a78;border-color:#2da992;color:white}
+.bybe-workstation button.primary:hover{background:#249985}
+.bybe-workstation button:disabled{opacity:.35}
+.bybe-short-status{font-size:12px;color:#9eb3c5;max-width:260px}
+.bybe-workstation nav.bybe-extra-tools{
+ display:flex!important;flex-direction:row!important;flex-wrap:wrap!important;
+ align-items:center!important;justify-content:flex-start!important;
+ gap:8px!important;padding:11px 12px!important;margin:7px 0 0;
+ max-height:200px!important;overflow-y:auto!important;overflow-x:visible!important;
+ background:#1c2632;border:1px solid #394b5f;box-shadow:0 10px 25px #0004;
+ border-radius:9px;z-index:24;position:relative;
+}
+.bybe-workstation nav.bybe-extra-tools button{flex:0 0 auto!important;width:auto!important;max-width:100%;font-size:12px}
+.bybe-statusline{
+ display:flex;align-items:center;justify-content:space-between;gap:14px;
+ background:#141c26;border:1px solid #293849;border-radius:8px;
+ margin-top:8px;padding:7px 11px;min-height:42px;
+}
+.bybe-statusline-main{min-width:0;display:flex;align-items:center;gap:9px;
+ overflow:hidden;white-space:nowrap;color:#adbfce;font-size:12px}
+.bybe-statusline-main strong{font-size:12px;max-width:240px;overflow:hidden;text-overflow:ellipsis;
+ color:#dce8f3;font-weight:600;white-space:nowrap}
+.bybe-status-indicator.ready{color:#3bcaa7;font-size:14px}
+.bybe-status-divider{color:#607286}
+.bybe-status-error{color:#ffc182;font-weight:700}
+.bybe-statusline-actions{display:flex;align-items:center;gap:7px;flex:none}
+.bybe-statusline-actions button{font-size:11px;min-height:29px;padding:4px 8px}
+.bybe-workstation button.bybe-rescan{border-color:#437b88;color:#a9f1e2}
+.bybe-diagnostics{position:relative}
+.bybe-diagnostics summary{
+ display:flex;align-items:center;cursor:pointer;white-space:nowrap;
+ font-size:12px;color:#b2cbda;padding:6px 7px;border:1px solid #3b5064;
+ border-radius:6px;background:#23303e;list-style:revert
+}
+.bybe-diagnostics[open] summary{border-color:#509b91}
+.bybe-diagnostic-list{
+ position:absolute;right:0;top:calc(100% + 8px);z-index:45;width:min(600px,90vw);
+ max-height:330px;overflow:auto;background:#18212d;border:1px solid #415970;
+ box-shadow:0 18px 40px #0009;border-radius:9px;padding:12px;
+ display:flex;flex-direction:column;gap:8px;color:#cbd9e7;font-size:12px;
+ white-space:normal;overflow-wrap:anywhere
+}
+.bybe-diagnostic-list>div{border-bottom:1px solid #344252;padding-bottom:7px}
+.bybe-diagnostic-list>div:last-child{border:0}
+.bybe-diagnostic-list strong{color:#e7f2ff}
+.bybe-diagnostic-list a{color:#79ddca;text-decoration:underline}
+.bybe-diagnostic-error{color:#ffd091}
+.bybe-alert{
+ display:flex;gap:5px;align-items:center;padding:8px 12px;margin-top:7px;
+ background:#3b2c1d;border:1px solid #85603b;color:#ffe0af;border-radius:7px;
+ font-size:12px;line-height:1.45
+}
+.bybe-alert strong{white-space:nowrap}
+.bybe-core{display:grid!important;grid-template-columns:minmax(310px,37%) minmax(440px,1fr)!important;
+ gap:9px!important;margin:9px 0!important;align-items:stretch}
+.bybe-workstation .panel{
+ padding:0!important;min-width:0!important;border:1px solid #344151;
+ border-radius:10px;background:#141c28;box-shadow:0 2px 9px #0002;
+}
+.bybe-workstation .panel>header{
+ min-height:45px;display:flex;align-items:center;justify-content:space-between;
+ gap:10px;padding:9px 14px;border-bottom:1px solid #2a394b
+}
+.bybe-workstation .panel h2{font-size:15px!important;font-weight:650!important;color:#edf5fb;letter-spacing:-.2px}
+.bybe-workstation .panel>header span{font-size:12px!important;color:#91a7bd}
+.bybe-transcript{min-height:390px;display:flex;flex-direction:column}
+.bybe-rows{padding:7px 8px;flex:1;max-height:clamp(350px,58vh,690px);overflow-y:auto}
+.bybe-empty{padding:20px!important;text-align:left;font-size:14px!important;color:#9eb5c6}
+.bybe-empty strong{font-size:15px!important}
+.bybe-empty p{margin-top:10px;font-size:13px!important}
+.bybe-row,.bybe-ocr-row{
+ border-radius:8px;border:1px solid #374759;background:#1a2531;
+ gap:5px;margin:4px 0;padding:5px 6px;
+}
+.bybe-row.is-current{background:#143c3b;border-color:#34c7ad}
+.bybe-row.is-selected{outline:1px solid #65b6db}
+.bybe-row-text span{font-size:14px!important;color:#f2f7ff}
+.bybe-row-text small{font-size:11px!important;line-height:1.4;color:#9aafc3}
+.bybe-row-actions button{padding:5px!important;min-width:31px;min-height:31px}
+.bybe-preview{min-width:0}
+.bybe-video-holder{padding:11px 11px 0;align-items:flex-start;min-height:0!important}
+.bybe-video-frame{width:100%;max-width:none;max-height:61vh;border-radius:5px;
+ border:1px solid #263345;background:#030609}
+.bybe-video-frame video{object-fit:contain}
+.bybe-preview-tools{padding:10px 12px 6px;gap:9px}
+.bybe-preview-tools>span{font-size:12px!important;color:#b8c9d7}
+.bybe-workstation .bybe-help{font-size:12px!important;color:#9cb0c3;line-height:1.5;
+ padding:4px 12px 10px;margin:0}
+.bybe-ocr-box{border-color:#30bea2}
+.bybe-ocr-box.armed{background:#edb54430;border-color:#edc45d}
+.bybe-ocr-box button.bybe-style-button{min-height:16px}
+.bybe-timeline{
+ position:sticky;bottom:6px;z-index:12;
+ margin-top:8px;border-radius:10px!important;
+ box-shadow:0 10px 28px #0009!important;
+ background:#111924!important;
+}
+.bybe-partnav{padding:4px 10px;gap:10px;justify-content:center}
+.bybe-partnav span{font-size:12px!important;color:#bfd1df}
+.bybe-track{height:95px;margin:4px 14px 0;border-color:#466076;border-radius:6px;background:#091521}
+.bybe-timeline-footer{font-size:12px!important;color:#acc5d7}
+.bybe-timeline .bybe-help{padding:2px 14px 8px}
+.bybe-wave-bar{opacity:.85!important;background:#3ccdaf!important}
+.bybe-clip-wave{background:#0d1b29}
+.bybe-workstation .bybe-modal{background:#1d2834}
+@media(max-width:900px){
+ .bybe-core{grid-template-columns:minmax(250px,36%) minmax(350px,1fr)!important}
+ .bybe-short-status{display:none}
+ .bybe-workstation .bybe-menu{gap:5px}
+}
+@media(max-width:730px){
+ .bybe-core{grid-template-columns:1fr!important}
+ .bybe-rows{max-height:360px}
+ .bybe-statusline{flex-wrap:wrap}
+ .bybe-statusline-main{max-width:100%}
+ .bybe-statusline-actions{margin-left:auto}
+ .bybe-timeline{position:relative;bottom:auto}
+ .bybe-video-frame{max-height:65vh}
+}
+@media(max-width:520px){
+ .bybe-workstation{padding:6px}
+ .bybe-statusline-main strong{max-width:125px}
+ .bybe-workstation .bybe-logo{font-size:14px;margin-right:4px}
+ .bybe-workstation .bybe-menu button{font-size:11px}
+ .bybe-workstation nav.bybe-extra-tools{max-height:270px!important}
+ .bybe-video-holder{padding:6px 6px 0}
+ .bybe-statusline{gap:6px}
+}
+
+.bybe-asr-install-note{font-size:12px;color:#f1ce92;background:#3b2c20;padding:7px 9px;border-radius:6px;border:1px solid #77573b}
+.bybe-asr-install-note code{color:#ffe6ba;font-size:11px}
+
+/* Full-source audio editor; avoid confining fine trimming to a 5-second inset. */
+.bybe-workstation .bybe-modal:has(.bybe-wave-editor-v2){
+ width:min(1000px,97vw);max-height:min(94vh,960px);overflow-y:auto;
+ padding:18px 22px;
+}
+.bybe-wave-editor-v2 .bybe-wave-navigation{
+ display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:11px;
+}
+.bybe-wave-editor-v2 .bybe-wave-navigation button{
+ padding:5px 9px;min-height:29px;background:#263a4e;
+}
+.bybe-wave-window-label{
+ color:#bbd6e7;font-size:12px;margin-left:auto;font-variant-numeric:tabular-nums;
+}
+.bybe-wave-overview{display:flex!important;flex-direction:row!important;
+ gap:12px!important;align-items:center;margin:5px 0 13px!important;
+ font-size:12px!important;color:#cfdae8;
+}
+.bybe-wave-overview input[type="range"]{flex:1;min-width:100px;margin:0;
+ padding:0!important;accent-color:#2ac3aa;border:0!important;
+}
+.bybe-wave-overview span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums;}
+.bybe-wave-editor-v2 svg{border:1px solid #385c76;display:block;}
+.bybe-preview-audio-controls{display:flex;flex-wrap:wrap;gap:8px;
+ margin:12px 0 8px;}
+.bybe-preview-audio-controls button{min-height:34px}
+.bybe-preview-audio-controls button[aria-pressed="true"]{
+ background:#1d5448;border-color:#36cba9;
+}
+.bybe-audio-separate-note{display:block;margin-top:6px;color:#a9c5d6;font-size:11px}
+.bybe-clip-wave{background:#0e202d}
+.bybe-workstation .bybe-source-overview{
+ display:flex;align-items:center;gap:12px;padding:8px 15px 2px;
+ color:#c9d6e4;font-size:11px;margin:0!important;
+}
+.bybe-source-overview input[type="range"]{
+ flex:1;accent-color:#29c9ac;background:transparent;min-width:100px;cursor:pointer;
+}
+.bybe-source-overview span:first-child{white-space:nowrap;min-width:180px;}
+.bybe-source-overview span:last-child{white-space:nowrap;color:#93adbf}
+.bybe-workstation .bybe-track{cursor:crosshair}
+.bybe-workstation .bybe-raw-ocr{margin:8px 0 6px;padding:7px 8px;
+ border:1px solid #314659;border-radius:8px;background:#131e29}
+.bybe-workstation .bybe-raw-ocr>summary{cursor:pointer;font-size:12px;
+ font-weight:600;color:#97bed2}
+@media(max-width:740px){
+ .bybe-wave-window-label{width:100%;margin:3px 0}
+ .bybe-source-overview{flex-wrap:wrap}
+ .bybe-source-overview span:last-child{display:none}
+ .bybe-source-overview input{width:100%;flex-basis:100%}
+}
+
+/* Direct sentence selection without relying on Tesseract's fixed regions. */
+.bybe-video-frame:has(.bybe-region-layer) .bybe-ocr-box{display:none!important}
+.bybe-region-layer{
+ position:absolute;inset:0;z-index:18;cursor:crosshair;
+ touch-action:none;user-select:none;background:rgba(8,20,25,.035);
+}
+.bybe-region-selection{
+ position:absolute;pointer-events:none;border:2px solid #ffc05c;
+ background:rgba(255,194,78,.14);box-shadow:0 0 0 1px #1c2c3d;
+}
+.bybe-region-text-panel{
+ position:fixed;bottom:20px;right:20px;z-index:120;width:min(650px,calc(100vw - 30px));
+ max-height:min(55vh,460px);overflow-y:auto;
+ background:#192636;color:#e6f0f8;border:1px solid #55758e;
+ border-radius:12px;box-shadow:0 14px 60px #000b;
+ padding:13px 14px;font-family:Inter,system-ui,"Segoe UI",sans-serif;
+}
+.bybe-region-panel-top{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.bybe-region-panel-top strong{font-size:14px}
+.bybe-region-panel-top span{color:#afcbd9;font-size:11px;flex:1}
+.bybe-region-panel-top button,.bybe-region-panel-actions button{
+ background:#273a50;border:1px solid #4a657c;color:#e9f3fa;
+ cursor:pointer;border-radius:6px;padding:7px 9px;font-size:12px
+}
+.bybe-region-panel-top button:hover,.bybe-region-panel-actions button:hover{background:#344f66}
+.bybe-region-text-panel textarea{
+ background:#0a1522;border:1px solid #54748c;display:block;
+ width:100%;resize:vertical;min-height:58px;color:#eef9ff;
+ padding:10px 12px;border-radius:7px;font-size:15px;line-height:1.5;
+ box-sizing:border-box;
+}
+.bybe-region-text-panel textarea:focus{outline:2px solid #42cdb7;outline-offset:0}
+.bybe-region-panel-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.bybe-region-panel-actions select{
+ color:#eff7ff;background:#203246;border:1px solid #4a657c;
+ border-radius:6px;padding:7px;font-size:12px;flex:1;min-width:130px;
+}
+.bybe-region-panel-actions button.primary{
+ background:#168b78;border-color:#36cbaa;color:white;font-weight:600;
+}
+.bybe-region-panel-actions button:disabled{opacity:.45;cursor:not-allowed}
+.bybe-region-warning{color:#ffddaa;font-size:12px;margin:7px 0}
+.bybe-region-text-panel small{display:block;font-size:11px;color:#b1c7d7;margin-top:8px}
+.bybe-rows-head-actions{display:flex;align-items:center;gap:9px}
+.bybe-workstation .bybe-rows-head-actions button{padding:4px 6px;min-height:26px}
+.bybe-workstation .bybe-delete-row{color:#dcbfc0;border-color:#53424e}
+.bybe-workstation .bybe-delete-row:hover{background:#5d2d35!important;color:white}
+.bybe-workstation .bybe-row-actions{gap:3px}
+@media(max-width:740px){
+ .bybe-region-text-panel{bottom:8px;right:8px;width:calc(100vw - 16px);max-height:58vh}
+ .bybe-region-panel-top{flex-wrap:wrap}
+}
+
+/* Audio Vision: explicit acoustic boundary review; never presented as verified AI alignment. */
+.bybe-audiovision{margin:13px 0 8px;padding:12px;border:1px solid #385668;
+ background:#132433;border-radius:9px}
+.bybe-audiovision-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bybe-audiovision-row>span{font-size:11px;color:#b3c9d9}
+.bybe-workstation .bybe-boundary-analyze{background:#246b70;border-color:#46b5b4;
+ color:#eafffb;font-weight:650}
+.bybe-boundary-result{margin-top:10px;padding:12px;border:1px solid #425b6f;
+ background:#101c29;border-radius:9px;display:flex;flex-direction:column;gap:9px}
+.bybe-boundary-head,.bybe-boundary-values{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bybe-boundary-head strong{font-size:13px;color:#f5fcff}
+.bybe-boundary-head span,.bybe-boundary-values span{font-size:12px;color:#bbd0de;
+ font-variant-numeric:tabular-nums}
+.bybe-audiovision-strips{display:flex;flex-direction:column;gap:5px}
+.bybe-audiovision-title{font-size:11px;color:#c4dae7}
+.bybe-audiovision-strips svg{width:100%;height:93px;border:1px solid #39536a;border-radius:5px;
+ background:#061420}
+.bybe-spectrum-legend{display:flex;flex-wrap:wrap;gap:12px}
+.bybe-spectrum-legend span{font-size:11px;color:#a9c1d1;display:inline-flex;align-items:center;gap:5px}
+.bybe-spectrum-legend i{width:9px;height:9px;border-radius:2px}
+.bybe-boundary-warning{font-size:11px;color:#efc798;margin:0}
+.bybe-boundary-result>small{font-size:11px;color:#9db6c6}
+
+.bybe-word-boundary-evidence{border:1px solid #57717e;border-radius:7px;
+ background:#102b36;padding:9px 10px;display:flex;flex-direction:column;gap:4px}
+.bybe-word-boundary-evidence strong{font-size:12px}
+.bybe-word-boundary-evidence span,.bybe-word-boundary-evidence small{
+ color:#c4d6e4;font-size:11px;line-height:1.4}
+.bybe-word-boundary-evidence.DISAGREE_REVIEW{border-color:#bf8653;background:#322a25}
+.bybe-word-boundary-evidence.DISAGREE_REVIEW strong{color:#ffcf92}
+.bybe-word-boundary-evidence.AGREE_REVIEW{border-color:#468c7b}
+.bybe-word-boundary-evidence.UNAVAILABLE_REVIEW{border-color:#76818e;background:#202632}
