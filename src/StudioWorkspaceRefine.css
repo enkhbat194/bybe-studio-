@@ -280,3 +280,13 @@
 .bybe-spectrum-legend i{width:9px;height:9px;border-radius:2px}
 .bybe-boundary-warning{font-size:11px;color:#efc798;margin:0}
 .bybe-boundary-result>small{font-size:11px;color:#9db6c6}
+
+.bybe-word-boundary-evidence{border:1px solid #57717e;border-radius:7px;
+ background:#102b36;padding:9px 10px;display:flex;flex-direction:column;gap:4px}
+.bybe-word-boundary-evidence strong{font-size:12px}
+.bybe-word-boundary-evidence span,.bybe-word-boundary-evidence small{
+ color:#c4d6e4;font-size:11px;line-height:1.4}
+.bybe-word-boundary-evidence.DISAGREE_REVIEW{border-color:#bf8653;background:#322a25}
+.bybe-word-boundary-evidence.DISAGREE_REVIEW strong{color:#ffcf92}
+.bybe-word-boundary-evidence.AGREE_REVIEW{border-color:#468c7b}
+.bybe-word-boundary-evidence.UNAVAILABLE_REVIEW{border-color:#76818e;background:#202632}
