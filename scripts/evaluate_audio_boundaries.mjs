@@ -13,8 +13,18 @@ if(!media||!labels){
  process.exit(2);
 }
 const gold=JSON.parse(await fs.readFile(labels,'utf8'));
-const samples=gold.samples;
-if(!Array.isArray(samples)||samples.length===0)throw Error('Gold manifest-д samples [] байх ёстой.');
+const isWorkspace=gold.schema==='bybe-workspace-v2';
+const samples=isWorkspace?
+ (Array.isArray(gold.segments)?gold.segments:[])
+  .filter(s=>s.qa==='MANUALLY_VERIFIED'&&
+   Number.isFinite(s.firstPassStart)&&Number.isFinite(s.firstPassEnd)&&
+   Number.isFinite(s.start)&&Number.isFinite(s.end))
+  .map(s=>({id:s.id,text:s.text,roughStart:s.firstPassStart,roughEnd:s.firstPassEnd,
+   verifiedStart:s.start,verifiedEnd:s.end}))
+ :gold.samples;
+if(!Array.isArray(samples)||samples.length===0)throw Error(
+ isWorkspace?'Баталгаажсан, эхний саналын хугацаатай QA мөр байхгүй. Аудиог засаж 6 QA баталгаажуулаад JSON экспортлоно уу.':
+ 'Gold manifest-д samples [] байх ёстой.');
 if(samples.length<20)console.warn('АНХААР: 20-аас цөөн жишээ. Энэ нь найдвартай benchmark биш.');
 async function ff(args,limit=1_800_000){
  return await new Promise((resolve,reject)=>{
