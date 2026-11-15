@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { PointerEvent as RP } from 'react';
 type Box={x:number;y:number;w:number;h:number};
 type Result={text:string;kind:string;frameSec:number};
@@ -87,7 +88,7 @@ export default function VideoTextRegion({video,active,initialKind,onApply,onClos
     onPointerCancel={()=>{pointer.current=null;}} title="Үг, бүтэн өгүүлбэрийг хулганаар хүрээлж чирнэ үү">
    {box&&<div className="bybe-region-selection" style={{left:box.x*100+'%',top:box.y*100+'%',width:box.w*100+'%',height:box.h*100+'%'}}/>}
   </div>
-  <div className="bybe-region-text-panel">
+  {createPortal(<div className="bybe-region-text-panel">
    <div className="bybe-region-panel-top"><strong>Кадраас текст сонгох</strong>
     <span>{reading?'OCR таньж байна…':'Үг эсвэл өгүүлбэрийг хүрээлж чирнэ'}</span>
     <button type="button" onClick={onClose}>✕ Хаах</button></div>
@@ -112,6 +113,6 @@ export default function VideoTextRegion({video,active,initialKind,onApply,onClos
    </div>
    {error&&<p className="bybe-region-warning" role="status">{error}</p>}
    <small>Автомат OCR алдаатай байж болно. Бичвэрийг засаж, сонгосон аудионы мөртэй холбох боломжтой.</small>
-  </div>
+  </div>, document.body)}
  </>;
 }
