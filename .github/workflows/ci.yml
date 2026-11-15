@@ -19,6 +19,10 @@ jobs:
         run: python3 -m py_compile scripts/local_asr_worker.py
       - name: Windows-like CP1252 Python Unicode regression
         run: node tests/python-encoding.mjs
+      - name: Whisper worker CPU device assignment regression
+        run: python3 tests/python-worker-device-test.py
+      - name: Verify development live updater syntax
+        run: node --check scripts/dev_live.mjs
       - name: Ensure FFmpeg is available
         run: command -v ffmpeg && command -v ffprobe || (sudo apt-get update && sudo apt-get install -y ffmpeg)
       - name: Real media API smoke test
