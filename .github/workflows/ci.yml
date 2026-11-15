@@ -23,6 +23,9 @@ jobs:
         run: python3 tests/python-worker-device-test.py
       - name: Verify development live updater syntax
         run: node --check scripts/dev_live.mjs
+      - name: Verify LIVE launcher actually serves HTTP before Git sync
+        run: node tests/live-startup-smoke.mjs
+        timeout-minutes: 2
       - name: Ensure FFmpeg is available
         run: command -v ffmpeg && command -v ffprobe || (sudo apt-get update && sudo apt-get install -y ffmpeg)
       - name: Real media API smoke test
