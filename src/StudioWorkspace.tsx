@@ -108,7 +108,9 @@ export default function StudioWorkspace(){
  const autoAsrSource=useRef('');
  const parts=useMemo(()=>planParts(duration,5,2),[duration]);
  const part=parts[partIndex]??{index:1,coreStart:0,coreEnd:Math.max(duration,1),analysisStart:0,analysisEnd:Math.max(duration,1)};
- const active=segments.find(s=>current>=s.start&&current<s.end)??null;
+ const active=segments.find(s=>current>=s.start&&current<s.end&&
+   (showLegacySuggestions||s.qa==='MANUALLY_VERIFIED'||s.origin!=='VISUAL_AUDIO_ESTIMATE'&&
+     !(s.origin==='LOCAL_ASR'&&s.asrPass!=='VAD_UTTERANCE')))??null;
  const activeId=active?.id??null;
  const selected=segments.find(s=>s.id===selectedId)??null;
  const editing=segments.find(s=>s.id===editId)??null;
@@ -686,7 +688,7 @@ export default function StudioWorkspace(){
       scan.job?.status==='error'?'OCR алдаа':'OCR хүлээгдэж байна'}
     </span>
     <span className="bybe-status-divider">·</span>
-    <span>{segments.length} аудио санал{estimated?' · '+estimated+' урьдчилсан':''}</span>
+    <span>{segments.length-legacyCount} харагдах санал{legacyCount?' · '+legacyCount+' хуучин/таамаг нуусан':''}</span>
    </div>
    <div className="bybe-statusline-actions">
     {media.working&&<button onClick={media.cancel}>Импорт зогсоох</button>}
@@ -825,7 +827,8 @@ export default function StudioWorkspace(){
     onPointerDown={beginDrag} onPointerMove={drag} onPointerUp={endDrag}>
     <div className="bybe-track-grid"/>
     {soundBars.length>0&&<div className="bybe-wave-peaks">{soundBars}</div>}
-    {segments.filter(s=>s.start<endOfView&&s.end>startOfView).map(s=><div className="bybe-track-segment" key={s.id}
+    {segments.filter(s=>s.start<endOfView&&s.end>startOfView&&
+     (showLegacySuggestions||!isLegacySuggestion(s))).map(s=><div className="bybe-track-segment" key={s.id}
      style={{left:Math.max(0,pct(s.start))+'%',width:Math.max(.3,Math.min(100,pct(s.end))-Math.max(0,pct(s.start)))+'%'}} title={s.text}/>)}
     {selectedRange&&selectedRange.end>startOfView&&selectedRange.start<endOfView&&<div className="bybe-track-selection"
      style={{left:Math.max(0,pct(selectedRange.start))+'%',width:Math.max(.3,Math.min(100,pct(selectedRange.end))-Math.max(0,pct(selectedRange.start)))+'%'}}/>}
