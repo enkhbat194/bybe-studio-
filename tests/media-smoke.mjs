@@ -53,6 +53,11 @@ try{
  const previewWav=Buffer.from(await preview.arrayBuffer());
  if(!preview.ok||previewWav.toString('ascii',0,4)!=='RIFF'||previewWav.length<5000)
   throw Error('Independent listen WAV failed');
+ if(previewWav.readUInt32LE(4)!==previewWav.length-8)
+  throw Error('Preview WAV RIFF size must be exact for Chrome playback');
+ const dataAt=previewWav.indexOf(Buffer.from('data'));
+ if(dataAt<12||previewWav.readUInt32LE(dataAt+4)!==previewWav.length-dataAt-8)
+  throw Error('Preview WAV data chunk size must be exact');
  const denied=await fetch(BASE+'/api/media/'+created.id+'/listen?start=2&end=1');
  if(denied.status!==400)throw Error('Invalid audio preview interval was accepted');
  const rev=await json('/api/media/'+created.id+'/export-wav','POST',{
