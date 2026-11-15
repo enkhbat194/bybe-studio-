@@ -24,6 +24,7 @@ interface Segment {
  id:string;sourceKey:string;text:string;kind:ClipKind;start:number;end:number;
  revisionId?:string;checks?:Record<QAKey,boolean>;matchStatus?:'AUTO_SUGGESTED';
  origin?:'VISUAL_AUDIO_ESTIMATE'|'LOCAL_ASR';
+ firstPassStart?:number;firstPassEnd?:number;
  frameSec:number|null;ocrId:string|null;styleSignature:string|null;
  qa:'REVIEW_REQUIRED'|'MANUALLY_VERIFIED';updatedAt:string;
 }
@@ -337,7 +338,9 @@ export default function StudioWorkspace(){
   if(!editDraft.text.trim()||!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||(duration>0&&end>duration)){
    setStatus('Бичвэр эсвэл эхлэл/төгсгөлийн хугацаа буруу байна.');return;
   }
-  setSegments(old=>old.map(s=>s.id===editId?{...s,text:editDraft.text.trim(),start:n3(start),end:n3(end),kind:editDraft.kind,origin:undefined,matchStatus:undefined,revisionId:undefined,checks:emptyQa(),qa:'REVIEW_REQUIRED' as const,updatedAt:new Date().toISOString()}:s).sort((a,b)=>a.start-b.start));
+  setSegments(old=>old.map(s=>s.id===editId?{...s,text:editDraft.text.trim(),start:n3(start),end:n3(end),kind:editDraft.kind,
+   firstPassStart:s.firstPassStart??s.start,firstPassEnd:s.firstPassEnd??s.end,
+   origin:undefined,matchStatus:undefined,revisionId:undefined,checks:emptyQa(),qa:'REVIEW_REQUIRED' as const,updatedAt:new Date().toISOString()}:s).sort((a,b)=>a.start-b.start));
   setEditId(null);setStatus('Засвар хадгалагдлаа. Өмнөх QA баталгаа хүчингүй.');
  }
  function posToTime(clientX:number){
@@ -530,7 +533,7 @@ export default function StudioWorkspace(){
     if(merged.some(c=>c.origin==='VISUAL_AUDIO_ESTIMATE'&&
       Math.abs(c.start-suggestion.start)<.7))continue;
     merged.push({id:crypto.randomUUID(),sourceKey,text:suggestion.text,
-      start:suggestion.start,end:suggestion.end,kind:'unknown',
+      start:suggestion.start,end:suggestion.end,firstPassStart:suggestion.start,firstPassEnd:suggestion.end,kind:'unknown',
       frameSec:suggestion.frameSec,ocrId:suggestion.ocrId,styleSignature:null,
       qa:'REVIEW_REQUIRED',origin:'VISUAL_AUDIO_ESTIMATE',matchStatus:'AUTO_SUGGESTED',
       updatedAt:new Date().toISOString()});
@@ -569,7 +572,8 @@ export default function StudioWorkspace(){
        Math.max(0,Math.min(c.end,entry.end)-Math.max(c.start,entry.start))<
        .45*Math.min(c.end-c.start,entry.end-entry.start));
     known.push({id:crypto.randomUUID(),sourceKey,text:entry.text,kind:'unknown',
-      start:n3(entry.start),end:n3(entry.end),frameSec:null,ocrId:null,styleSignature:null,
+      start:n3(entry.start),end:n3(entry.end),firstPassStart:n3(entry.start),firstPassEnd:n3(entry.end),
+      frameSec:null,ocrId:null,styleSignature:null,
       qa:'REVIEW_REQUIRED',origin:'LOCAL_ASR',updatedAt:new Date().toISOString()});
     changed=true;
    }
