@@ -39,6 +39,12 @@ def transcribe(command: dict, model_cache: dict) -> dict:
         raise RuntimeError("faster-whisper суулгаагүй: py -3.11 -m pip install faster-whisper") from exc
 
     model_name = os.getenv("BYBE_ASR_MODEL", "small")
+    # Restrict CPU inference so OCR, FFmpeg and the browser remain responsive on
+    # 6-core/16GB Windows laptops. This is a throughput choice, not accuracy gain.
+    try:
+        cpu_threads = min(6, max(2, int(os.getenv("BYBE_ASR_CPU_THREADS", "4"))))
+    except ValueError:
+        cpu_threads = 4
     # CPU is the reliable out-of-box mode on Windows; a CUDA-capable GPU alone
     # does not provide CUDA 12 / cuDNN runtime. Explicitly opt into CUDA.
     selected = os.getenv("BYBE_ASR_DEVICE", "cpu")
@@ -48,13 +54,14 @@ def transcribe(command: dict, model_cache: dict) -> dict:
         device = "cuda" if selected == "cuda" else "cpu"
         try:
             model_cache["model"] = WhisperModel(model_name, device=device,
-                                               compute_type="int8_float16" if device == "cuda" else "int8")
+                                               compute_type="int8_float16" if device == "cuda" else "int8",
+                                               cpu_threads=cpu_threads, num_workers=1)
             model_cache["device"] = device
         except Exception as error:
             if selected == "cuda":
                 raise RuntimeError("CUDA загвар эхлүүлэх боломжгүй: " + str(error)) from error
             print("CUDA unavailable; falling back to CPU: " + str(error), file=sys.stderr, flush=True)
-            model_cache["model"] = WhisperModel(model_name, device="cpu", compute_type="int8")
+            model_cache["model"] = WhisperModel(model_name, device="cpu", compute_type="int8",cpu_threads=cpu_threads,num_workers=1)
             model_cache["device"] = "cpu"
 
     # Never overwrite the user's original media; only a temporary PCM workfile.
