@@ -93,7 +93,10 @@ function markActivity(frames:AcousticFrame[]){
  const values=frames.map(f=>f.level).sort((a,b)=>a-b);
  const q15=percentile(values,.15),q90=percentile(values,.9);
  // Reject constant/hiss noise with no dynamic speech-like energy change.
- if(q90<.003||q90-q15<.006)return {dynamic:false,noise:q15,peak:q90,threshold:0};
+ // A continuously voiced tone has RMS fluctuations every few frames but NO
+ // genuinely quiet background. Do not invent word boundaries from those ripples.
+ if(q90<.003||q90-q15<.006||q15>.32*q90)
+  return {dynamic:false,noise:q15,peak:q90,threshold:0};
  const threshold=q15+.20*(q90-q15);
  const spectral=frames.map(f=>f.high).sort((a,b)=>a-b);
  const highBase=percentile(spectral,.20),highMax=percentile(spectral,.9);
