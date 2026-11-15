@@ -1,4 +1,4 @@
-import type { FrameResult, OcrBlock } from './typography';
+import { usefulVideoText, type FrameResult, type OcrBlock } from './typography';
 
 export interface AudioSuggestion {
  text:string;start:number;end:number;frameSec:number;ocrId:string;kind:
@@ -8,17 +8,20 @@ export interface AudioSuggestion {
 /** Only title-like upper-left items can anchor a slide; skip watermark, counters and tiny OCR noise. */
 export function looksLikeTitle(b:OcrBlock):boolean{
  const s=b.text.normalize('NFC').trim();
- return b.box.x>=.015&&b.box.x<.48&&b.box.y>=.04&&b.box.y<.36
-  &&b.box.h>=.023&&b.box.h<.17&&s.length>=3&&s.length<=34
-  &&s.split(/\s+/).length<=2&&!/[\d@/:]/.test(s)
-  &&/^[\p{L}\p{M}'\- ]+$/u.test(s)&&!(/class|www|http/i.test(s));
+ const topLeft=b.box.x>=.015&&b.box.x<.52&&b.box.y>=.04&&b.box.y<.42&&b.box.h>=.025;
+ const centeredLarge=b.box.x>=.23&&b.box.x<.78&&b.box.y>=.34&&b.box.y<.70&&b.box.h>=.046;
+ return usefulVideoText(b)&&(topLeft||centeredLarge)&&b.box.h<.17
+  &&s.length>=3&&s.length<=34&&s.split(/\s+/).length<=2
+  &&!/[\d@/:]/.test(s)&&/^[\p{L}\p{M}'\- ]+$/u.test(s);
 }
 interface Slide {word:OcrBlock;english?:OcrBlock;sentence?:OcrBlock;englishSentence?:OcrBlock;start:number}
 function captureOtherText(slide:Slide,frame:FrameResult){
  for(const b of frame.blocks){
   if(b.id===slide.word.id||/[\d@]/.test(b.text)||/class|www|https?:/i.test(b.text))continue;
   const words=b.text.trim().split(/\s+/).length;
-  if(b.box.x<.5 && b.box.y>slide.word.box.y && b.box.y<.48 && words<=3 &&
+  // Supports both upper-left vocabulary overlays and centered full-screen word slides.
+  if(b.box.x<.84 && b.box.y>slide.word.box.y && b.box.y<Math.min(.78,slide.word.box.y+.28)
+      &&b.box.h>=.025 && words<=2 &&
     (!slide.english||b.box.y<slide.english.box.y))slide.english=b;
   if(b.box.y>.57&&words>=2){
    if(!slide.sentence||b.box.y<slide.sentence.box.y)slide.sentence=b;
