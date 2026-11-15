@@ -36,3 +36,15 @@ jobs:
       - name: End-to-end automatic OCR audio linking (no Whisper API)
         run: node --import tsx tests/auto-link-smoke.mjs
         timeout-minutes: 5
+
+  windows-live:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: LIVE server boot on Windows, not just Linux
+        run: node tests/live-startup-smoke.mjs
+        timeout-minutes: 3
