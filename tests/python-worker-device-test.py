@@ -14,7 +14,8 @@ from scripts.local_asr_worker import transcribe
 
 created=[]
 class FakeWhisperModel:
-    def __init__(self, model_name, device, compute_type):
+    def __init__(self, model_name, device, compute_type, cpu_threads=0, num_workers=1):
+        assert cpu_threads==4 and num_workers==1
         created.append((model_name, device, compute_type))
     def transcribe(self, wav, **kwargs):
         # Called once per VAD-separated utterance, NOT once per 5-minute file.
