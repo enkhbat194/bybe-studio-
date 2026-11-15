@@ -546,7 +546,10 @@ export default function StudioWorkspace(){
    return changed?merged.sort((a,b)=>a.start-b.start):old;
   });
  },[sourceKey]);
- const visualAudio=useVisualAudio(media.sourceId,media.sourceDuration||duration,frames,addAutoAudio);
+ // Energy-only OCR associations are unreliable for alternating Czech/English.
+ // Do not spend CPU generating hundreds of false clip labels by default.
+ // The original estimator remains explicitly available under Legacy proposals.
+ const visualAudio=useVisualAudio(showLegacySuggestions?media.sourceId:'',media.sourceDuration||duration,frames,addAutoAudio);
  // Opening a video is sufficient to begin preparing the local FFmpeg data.
  // Refs prevent duplicate long-running imports across React rerenders.
  useEffect(()=>{
@@ -728,9 +731,9 @@ export default function StudioWorkspace(){
     <header><h2>Автомат холбосон аудио</h2>
      <div className="bybe-rows-head-actions">
       <span>{rows.length} харагдаж байна · {reviewCount} шалгах</span>
-      {legacyCount>0&&<button type="button" onClick={()=>setShowLegacySuggestions(x=>!x)}
-       title="Хуучин 5 минутын Whisper ба OCR-waveform таслах таамгуудыг тусад нь үзэх. Нэг ч мэдээллийг устгахгүй.">
-        {showLegacySuggestions?'Хуучин таамгийг нуух':'Хуучин/бүдүүн санал ('+legacyCount+')'}
+      {file&&<button type="button" onClick={()=>setShowLegacySuggestions(x=>!x)}
+       title="Үг танихгүй waveform/OCR таамгийг тусад нь үзэх, эсвэл хуучин 5 минутын ASR жагсаалтыг харах. Хадгалсан мэдээлэл устахгүй.">
+        {showLegacySuggestions?'Бүдүүн таамгийг нуух':'Хуучин/таамаг ('+legacyCount+')'}
        </button>}
       {lastDeleted&&<button type="button" title="Ctrl+Z" onClick={undoDelete}><Undo2 size={14}/> Буцаах</button>}
      </div>
