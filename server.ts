@@ -7,6 +7,7 @@ import { GoogleGenAI } from '@google/genai';
 import { spawnSync } from 'node:child_process';
 import { registerTypographyRoutes } from './server/ocrTypography';
 import { registerMediaRoutes } from './server/mediaLibrary';
+import { registerAudioBoundaryRoutes } from './server/audioBoundary';
 import { registerScanRoutes, recoverScanJobs } from './server/backgroundScan';
 import { registerLocalAsrRoutes } from './server/localAsr';
 import { registerBackgroundAsr, recoverAsrJobs } from './server/backgroundAsr';
@@ -31,6 +32,7 @@ function sendError(error:unknown):string {
 }
 registerTypographyRoutes(app,client);
 registerMediaRoutes(app);
+registerAudioBoundaryRoutes(app);
 registerScanRoutes(app);
 registerLocalAsrRoutes(app);
 registerBackgroundAsr(app);
