@@ -257,3 +257,26 @@
  .bybe-region-text-panel{bottom:8px;right:8px;width:calc(100vw - 16px);max-height:58vh}
  .bybe-region-panel-top{flex-wrap:wrap}
 }
+
+/* Audio Vision: explicit acoustic boundary review; never presented as verified AI alignment. */
+.bybe-audiovision{margin:13px 0 8px;padding:12px;border:1px solid #385668;
+ background:#132433;border-radius:9px}
+.bybe-audiovision-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bybe-audiovision-row>span{font-size:11px;color:#b3c9d9}
+.bybe-workstation .bybe-boundary-analyze{background:#246b70;border-color:#46b5b4;
+ color:#eafffb;font-weight:650}
+.bybe-boundary-result{margin-top:10px;padding:12px;border:1px solid #425b6f;
+ background:#101c29;border-radius:9px;display:flex;flex-direction:column;gap:9px}
+.bybe-boundary-head,.bybe-boundary-values{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bybe-boundary-head strong{font-size:13px;color:#f5fcff}
+.bybe-boundary-head span,.bybe-boundary-values span{font-size:12px;color:#bbd0de;
+ font-variant-numeric:tabular-nums}
+.bybe-audiovision-strips{display:flex;flex-direction:column;gap:5px}
+.bybe-audiovision-title{font-size:11px;color:#c4dae7}
+.bybe-audiovision-strips svg{width:100%;height:93px;border:1px solid #39536a;border-radius:5px;
+ background:#061420}
+.bybe-spectrum-legend{display:flex;flex-wrap:wrap;gap:12px}
+.bybe-spectrum-legend span{font-size:11px;color:#a9c1d1;display:inline-flex;align-items:center;gap:5px}
+.bybe-spectrum-legend i{width:9px;height:9px;border-radius:2px}
+.bybe-boundary-warning{font-size:11px;color:#efc798;margin:0}
+.bybe-boundary-result>small{font-size:11px;color:#9db6c6}
