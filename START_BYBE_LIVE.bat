@@ -20,6 +20,12 @@ if not exist "node_modules\tsx" (
  if errorlevel 1 (echo npm install failed.& pause & exit /b 1)
 )
 if not defined BYBE_ASR_DEVICE set "BYBE_ASR_DEVICE=cpu"
-start "" "http://localhost:3000"
+echo.
+echo Starting BYBE server first. GitHub sync will NOT delay startup.
+echo Open http://localhost:3000 only after the "listening" message appears.
+echo If error appears, this window stays open so it can be read.
+echo.
 node scripts\dev_live.mjs
-if errorlevel 1 (echo Live mode stopped. See error above.& pause)
+echo.
+echo BYBE Studio LIVE has stopped. Read any errors above.
+pause
