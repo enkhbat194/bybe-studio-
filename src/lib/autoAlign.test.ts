@@ -44,3 +44,16 @@ test('Silent or constant noise must not create false linked audio',()=>{
  assert.deepEqual(proposeVisualAudio(frames,Array(1200).fill(0),0,60),[]);
  assert.deepEqual(proposeVisualAudio(frames,Array(1200).fill(.2),0,60),[]);
 });
+
+test('Centered word slide also anchors OCR/audio without selecting the English gloss',()=>{
+ const frames:FrameResult[]=[
+  {frameSec:120,blocks:[
+   block('w','kašel',.42,.42,.08,120),
+   block('e','cough',.42,.59,.05,120)
+  ]}
+ ];
+ const slides=discoverSlides(frames,100,145);
+ assert.equal(slides.length,1);
+ assert.equal(slides[0].word.text,'kašel');
+ assert.equal(slides[0].english?.text,'cough');
+});
