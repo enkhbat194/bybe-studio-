@@ -379,7 +379,8 @@ export default function StudioWorkspace(){
   if(end-start<.08){const v=video.current;if(v)v.currentTime=t;setSelectedRange(null);return;}
   setSelectedRange({start:n3(start),end:n3(end)});
   const v=video.current;if(v){v.pause();v.currentTime=start;}setCurrent(start);
-  setStatus('Хэсэг сонголоо. T дараад видеон дээрх бичвэрийг товшино уу.');
+  setTextMode(true);
+  setStatus('Аудионы хүрээ сонголоо. Одоо видеоны Чех үг эсвэл бүтэн өгүүлбэрийг хулганаар хүрээлж чир.');
  }
  async function captureFrame(){
   const v=video.current;if(!v?.videoWidth)return setStatus('Дүрстэй видео файл нээнэ үү.');
