@@ -1,5 +1,8 @@
 import type { Express } from 'express';
 import { getLocalSource, ffRun } from './mediaLibrary';
+import { transcribeLocalPart } from './localAsr';
+import { compareWhisperWords, type WhisperSegment, type WordBoundaryEvidence } from './wordBoundaryCheck';
+
 
 const RATE=16_000, HOP=160, NFFT=512;
 const PRE_ROLL=.065, POST_ROLL=.095;
@@ -148,6 +151,11 @@ export function registerAudioBoundaryRoutes(app:Express){
   if(origin){try{if(new URL(origin).host!==req.get('Host')){res.status(403).end();return;}}
    catch{res.status(403).end();return;}}
   const start=Number(req.body?.start),end=Number(req.body?.end);
+  const crossCheck=req.body?.crossCheck===true;
+  const text=typeof req.body?.text==='string'?req.body.text.trim():'';
+  if(crossCheck&&(!text||text.length>240||end-start>18)){
+   res.status(400).json({error:'Whisper давхар шалгалт 18 секундээс богино, бичвэртэй хэсэгт хийнэ.'});return;
+  }
   if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||end-start>35){
    res.status(400).json({error:'Зааг шинжлэх хэсэг 0–35 секунд байх ёстой.'});return;
   }
@@ -162,7 +170,21 @@ export function registerAudioBoundaryRoutes(app:Express){
    const result=await ffRun(args,'ffmpeg',RATE*2*44);
    if(result.code!==0)throw Error('FFmpeg дууны шинжилгээ ажилласангүй: '+result.stderr.slice(-250));
    if(!result.stdout.length)throw Error('Энэ хугацаанд аудио өгөгдөл алга.');
-   res.json(analyzeBoundaryPcm(result.stdout,from,start,end,source.meta.duration));
+   const answer=analyzeBoundaryPcm(result.stdout,from,start,end,source.meta.duration);
+   let wordEvidence:WordBoundaryEvidence|undefined;
+   if(crossCheck){
+    try{
+     // Actual Whisper word timestamps are a second, independent boundary signal.
+     // Running optional local AI is deliberately opt-in because first load can be slow.
+     const recognized=await transcribeLocalPart(source.filepath,from,to);
+     wordEvidence=compareWhisperWords(text,start,answer.proposed.start,answer.proposed.end,
+      (recognized.segments||[]) as WhisperSegment[]);
+    }catch(e){
+     wordEvidence={status:'NO_MATCH',verdict:'UNAVAILABLE_REVIEW',recognizedText:'',
+      note:'Whisper давхар шалгалт ажилласангүй: '+(e instanceof Error?e.message:String(e)).slice(0,170)};
+    }
+   }
+   res.json({...answer,wordEvidence});
   }catch(error){res.status(500).json({error:error instanceof Error?error.message:'Аудио шинжилгээний алдаа'});}
  });
 }
