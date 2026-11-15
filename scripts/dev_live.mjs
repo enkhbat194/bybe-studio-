@@ -18,7 +18,7 @@ function verify(){
   throw Error('Шууд шинэчлэлт зөвхөн '+BRANCH+' салбар дээр ажиллана. Одоогийн салбар: '+here.output);
  }
  const origin=git('remote','get-url','origin');
- if(!origin.ok||!/github\.com[:/]enkhbat194\/bybe-studio-\.git$/.test(origin.output)){
+ if(!origin.ok||!/github\.com[:/]enkhbat194\/bybe-studio-(?:\.git)?\/?$/.test(origin.output)){
   throw Error('Git origin BYBE Studio-ийн зөв repository биш. Автоматаар татахгүй.');
  }
 }
