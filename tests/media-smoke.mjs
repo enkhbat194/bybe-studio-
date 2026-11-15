@@ -60,6 +60,20 @@ try{
   throw Error('Preview WAV data chunk size must be exact');
  const denied=await fetch(BASE+'/api/media/'+created.id+'/listen?start=2&end=1');
  if(denied.status!==400)throw Error('Invalid audio preview interval was accepted');
+ const acoustic=await json('/api/media/'+created.id+'/boundary-analyze','POST',{
+  start:.6,end:1.8});
+ if(acoustic.method!=='ACOUSTIC_10MS_REVIEW_ONLY'||acoustic.analysis.hopMs!==10||
+    !Array.isArray(acoustic.frames)||acoustic.frames.length<200||
+    !Number.isFinite(acoustic.proposed.start)||acoustic.state!=='NO_CLEAR_BOUNDARY')
+  throw Error('Acoustic boundary diagnostics must not invent word boundaries in constant sine: '+JSON.stringify(acoustic).slice(0,500));
+ const badBoundary=await fetch(BASE+'/api/media/'+created.id+'/boundary-analyze',{
+  method:'POST',headers:{...headers,'Content-Type':'application/json'},
+  body:JSON.stringify({start:-1,end:2})});
+ if(badBoundary.status!==400)throw Error('Invalid acoustic window was accepted');
+ const unauthBoundary=await fetch(BASE+'/api/media/'+created.id+'/boundary-analyze',{
+  method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({start:.6,end:1.8})});
+ if(unauthBoundary.status!==403)throw Error('Unauthenticated acoustic API was accepted');
  const rev=await json('/api/media/'+created.id+'/export-wav','POST',{
   text:'růžová',kind:'word_normal',start:.2,end:1.2,clipId:'smoke-1'});
  if(!rev.id||!rev.sha256||rev.qa!=='REVIEW_REQUIRED')throw Error('WAV revision missing metadata');
