@@ -189,6 +189,18 @@ export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,or
    </div>
   </div>;
  },[diagnostic]); 
+ const autoInspectionKey=useRef('');
+ useEffect(()=>{
+  const key=sourceId+':'+originalStart+':'+originalEnd;
+  if(!sourceId||!Number.isFinite(originalStart)||!Number.isFinite(originalEnd)||
+   originalEnd-originalStart<.04||originalEnd-originalStart>35)return;
+  if(autoInspectionKey.current===key)return;
+  autoInspectionKey.current=key;
+  const timer=window.setTimeout(()=>{void analyzeBoundary(false);},220);
+  return()=>window.clearTimeout(timer);
+ // Only run when opening a different clip. Draft boundary edits never retrigger it.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[sourceId,originalStart,originalEnd]);
  const canPreview=sourceId&&end>start&&end-start<=300;
  return <div className="bybe-clip-wave bybe-wave-editor-v2">
   <div className="bybe-wave-navigation">
