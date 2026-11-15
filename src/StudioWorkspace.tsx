@@ -749,7 +749,7 @@ export default function StudioWorkspace(){
     <header><h2>Эх видео · текст сонгох</h2><span>Текст таних: {frame?'кадр бэлэн':'энэ кадрт байхгүй'}</span></header>
     <div className="bybe-video-holder">
      {src?<div className="bybe-video-frame" ref={videoFrameRef} style={{aspectRatio:String(videoAspect)}}>
-      <video ref={video} src={media.previewUrl||src} controls playsInline preload="metadata"
+      <video ref={video} src={media.previewUrl||src} controls playsInline disablePictureInPicture preload="metadata"
        onTimeUpdate={onTimeTick}
        onLoadedMetadata={e=>{const d=e.currentTarget.duration;setDuration(Number.isFinite(d)?d:0);}}
        onError={()=>setStatus('Файлын кодекийг браузер уншиж чадсангүй. MKV-г FFmpeg-ээр MP4 preview болгон хөрвүүлэх шаардлагатай.')}
