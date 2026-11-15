@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
+interface BoundarySignalFrame{t:number;level:number;low:number;mid:number;high:number;flux:number;active:boolean}
+interface BoundaryResult{
+ original:{start:number;end:number};
+ proposed:{start:number;end:number};
+ analysis:{start:number;end:number;hopMs:number;rate:number};
+ method:string;
+ state:'PROPOSED_REVIEW_REQUIRED'|'NO_CLEAR_BOUNDARY';
+ changed:{start:boolean;end:boolean};
+ warnings:string[];
+ frames:BoundarySignalFrame[];
+}
 interface Props {
  sourceId:string;sourceDuration:number;
  originalStart:number;originalEnd:number;start:number;end:number;
@@ -16,6 +27,9 @@ export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,or
  const [windowStart,setWindowStart]=useState(()=>Math.max(0,originalStart-8));
  const [peaks,setPeaks]=useState<number[]>([]);
  const [error,setError]=useState('');
+ const [diagnostic,setDiagnostic]=useState<BoundaryResult|null>(null);
+ const [diagnosticBusy,setDiagnosticBusy]=useState(false);
+ const diagnosticRequest=useRef(0);
  const [repeat,setRepeat]=useState(false);
  const [listening,setListening]=useState<'selection'|'window'>('selection');
  const drag=useRef<{mode:'start'|'end'|'pan';x:number;origin:number}|null>(null);
@@ -30,7 +44,7 @@ export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,or
   const width=Math.min(duration,MAX_SPAN,Math.max(20,(originalEnd-originalStart)*4));
   setSpan(width);
   setWindowStart(clamp((originalStart+originalEnd)/2-width/2,0,Math.max(0,duration-width)));
-  setPeaks([]);setError('');
+  setPeaks([]);setError('');setDiagnostic(null);
  },[sourceId,originalStart,originalEnd,duration]);
 
  // Debounce FFmpeg calls while panning or dragging. Memory use is bounded even for 6-hour files.
@@ -120,6 +134,53 @@ export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,or
   a.pause();a.src=url;a.load();
   void a.play().catch(()=>setError('Аудио эхлээгүй. Доорх audio Play товчийг дарж эсвэл FFmpeg-ийн алдааг шалгана уу.'));
  }
+ async function analyzeBoundary(){
+  const request=++diagnosticRequest.current;
+  if(!sourceId)return;
+  if(end-start>35||end-start<.04){
+   setError('10 мс анализ хийх аудио 0.04–35 секунд байна. Эхлээд засах хэсгээ сонгоно уу.');return;
+  }
+  setDiagnosticBusy(true);setDiagnostic(null);setError('');
+  try{
+   const resp=await fetch('/api/media/'+sourceId+'/boundary-analyze',{
+    method:'POST',
+    headers:{'X-BYBE-Request':'1','Content-Type':'application/json'},
+    body:JSON.stringify({start,end}),
+   });
+   const value=await resp.json().catch(()=>({}));
+   if(!resp.ok)throw Error(value.error||'Акустик зааг шинжлэх алдаа');
+   if(request!==diagnosticRequest.current)return;
+   const result=value as BoundaryResult;
+   setDiagnostic(result);
+   // The AI/FFT suggestion NEVER auto-commits to the actual clip.
+   if(result.frames.length)center((start+end)/2,Math.min(45,Math.max(7,end-start+4)));
+  }catch(e){if(request===diagnosticRequest.current)setError(e instanceof Error?e.message:'Анализ алдаа');}
+  finally{if(request===diagnosticRequest.current)setDiagnosticBusy(false);}
+ }
+ const strips=useMemo(()=>{
+  if(!diagnostic)return null;
+  const input=diagnostic.frames;
+  const step=Math.max(1,Math.ceil(input.length/370));
+  const samples=input.filter((_,i)=>i%step===0);
+  const max=(key:'low'|'mid'|'high')=>Math.max(.0001,...samples.map(x=>x[key]));
+  const bands:['low'|'mid'|'high',string,string][]=[
+   ['low','Нам давтамж','#1ba896'],['mid','Дунд давтамж','#5cb9de'],['high','Өндөр давтамж','#efa55a']];
+  return <div className="bybe-audiovision-strips">
+   <div className="bybe-audiovision-title">Spectrogram (давтамжийн шинжилгээ) · 10 мс алхам</div>
+   <svg viewBox="0 0 370 84" preserveAspectRatio="none" role="img"
+    aria-label="Нам, дунд, өндөр давтамжийн идэвхжлийг тус тусад нь харуулсан спектрийн зурвасууд">
+    {bands.map(([band,,color],j)=>{
+     const ceiling=max(band),width=370/Math.max(1,samples.length);
+     return samples.map((frame,i)=><rect key={band+i} x={i*width} y={j*28}
+      width={width+.25} height="26"
+      fill={color} opacity={.12+.86*Math.min(1,frame[band]/ceiling)}/>);
+    })}
+   </svg>
+   <div className="bybe-spectrum-legend">
+    {bands.map(([band,label,color])=><span key={band}><i style={{background:color}}/>{label}</span>)}
+   </div>
+  </div>;
+ },[diagnostic]); 
  const canPreview=sourceId&&end>start&&end-start<=300;
  return <div className="bybe-clip-wave bybe-wave-editor-v2">
   <div className="bybe-wave-navigation">
@@ -155,6 +216,34 @@ export default function ClipWaveEditor({sourceId,sourceDuration,originalStart,or
     stroke="#ffb547" strokeWidth="3" pointerEvents="none"/>}
   </svg>
   <div className="bybe-clip-times"><span>{sec(from)}</span><span>{sec(to)}</span></div>
+  <section className="bybe-audiovision">
+   <div className="bybe-audiovision-row">
+    <button type="button" className="bybe-boundary-analyze" disabled={!sourceId||diagnosticBusy||end-start>35}
+      onClick={()=>void analyzeBoundary()}>
+      {diagnosticBusy?'10 мс зааг шинжилж байна…':'◉ Audio Vision · Заагийг 10 мс-ээр шинжлэх'}
+    </button>
+    <span>Дууны хүч + давтамж + нам гүмийг шалгана. Зөвхөн санал.</span>
+   </div>
+   {diagnostic&&<div className="bybe-boundary-result">
+    <div className="bybe-boundary-head">
+     <strong>{diagnostic.state==='PROPOSED_REVIEW_REQUIRED'?'Заагийн шинэ санал':'Зааг тодорхой бус'}</strong>
+     <span>{diagnostic.analysis.hopMs} мс · {diagnostic.frames.length} хэмжилт</span>
+    </div>
+    {strips}
+    <div className="bybe-boundary-values">
+     <span>Өмнөх: {sec(diagnostic.original.start)} — {sec(diagnostic.original.end)}</span>
+     <span>Санал: {sec(diagnostic.proposed.start)} — {sec(diagnostic.proposed.end)}</span>
+    </div>
+    {diagnostic.warnings.map((warning,i)=><p key={i} className="bybe-boundary-warning">{warning}</p>)}
+    <button type="button" disabled={diagnostic.state!=='PROPOSED_REVIEW_REQUIRED'}
+      onClick={()=>{
+       onChange(diagnostic.proposed.start,diagnostic.proposed.end);
+       setDiagnostic(null);
+       center((diagnostic.proposed.start+diagnostic.proposed.end)/2,Math.max(7,diagnostic.proposed.end-diagnostic.proposed.start+4));
+      }}>✓ Санал болгосон заагийг түр хэрэглэх</button>
+    <small>Энэ нь WAV хадгалахгүй, QA батлахгүй. Үгийг сонсож шалгаад «Засвар хадгалах» дар.</small>
+   </div>}
+  </section>
   <div className="bybe-preview-audio-controls">
    <button type="button" disabled={!canPreview} onClick={()=>listen('selection')}>▶ Сонгосон хэсгийг сонсох</button>
    <button type="button" disabled={!sourceId||delta>300} onClick={()=>listen('window')}>▶ Дэлгэцийн хүрээг сонсох</button>
