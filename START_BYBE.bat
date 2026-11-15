@@ -35,6 +35,8 @@ where ffprobe >nul 2>nul
 if errorlevel 1 (
  echo WARNING: FFprobe not found. Local video import cannot finish.
 )
+if not defined BYBE_ASR_DEVICE set "BYBE_ASR_DEVICE=cpu"
+echo Whisper device: %BYBE_ASR_DEVICE% (CPU mode requires no CUDA DLL)
 echo.
 echo Starting local BYBE Studio...
 echo When ready open http://localhost:3000
