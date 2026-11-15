@@ -58,6 +58,9 @@ export function registerLocalAsrRoutes(app:Express){
  app.get('/api/asr/status',(_req,res)=>res.json({
   service:'faster-whisper',optional:true,workerRunning:!!worker&&!worker.killed,
   model:process.env.BYBE_ASR_MODEL||'small',
+  device:process.env.BYBE_ASR_DEVICE||'cpu',
+  strategy:'VAD_UTTERANCE',
+  languageDetection:'per-utterance (Czech/English mixed recording)',
   note:'Python 3.11 + faster-whisper заавал суусан байх хэрэгтэй. Транскрипц зөвхөн санал.'
  }));
  app.post('/api/asr/part',async(req,res)=>{
